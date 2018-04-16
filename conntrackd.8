@@ -1,4 +1,4 @@
-.TH CONNTRACKD 8 "Aug 30, 2016" "" ""
+.TH CONNTRACKD 8 "Apr 16, 2018" "" ""
 
 .\" Man page written by Pablo Neira Ayuso <pablo@netfilter.org> (Dec 2007)
 
@@ -148,9 +148,6 @@ the configuration file, ignore this notice.
 .SH SYSTEMD INTEGRATION
 Starting with the 1.4.4 release, \fBconntrackd\fP includes integration with
 \fBsystemd(1)\fP to use an unit file of \fIType=notify\fP and watchdog support.
-
-The daemon should be configured at build time to include such support
-and \fBconntrackd.conf(5)\fP should contain \fBSystemd on\fP.
 
 .SH INCOMPATIBILITIES
 During the 0.9.9 development, some important changes in the replication message

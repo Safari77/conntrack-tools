@@ -1,5 +1,5 @@
 .\"
-.\" (C) Copyright 2015, Arturo Borrero Gonzalez <arturo@debian.org>
+.\" (C) Copyright 2015-2018, Arturo Borrero Gonzalez <arturo@netfilter.org>
 .\"
 .\" %%%LICENSE_START(GPLv2+_DOC_FULL)
 .\" This is free documentation; you can redistribute it and/or
@@ -22,7 +22,7 @@
 .\" <http://www.gnu.org/licenses/>.
 .\" %%%LICENSE_END
 .\"
-.TH CONNTRACKD.CONF 5 "January 24, 2018"
+.TH CONNTRACKD.CONF 5 "Apr 16, 2018"
 
 .SH NAME
 conntrackd.conf \- configuration file for conntrackd daemon
@@ -476,7 +476,8 @@ Note: \fBsystemd(1)\fP watchdog is supported as well.
 
 Example: Systemd on
 
-By default runtime support is disabled.
+By default runtime support is enabled if conntrackd was built with the systemd
+feature. Otherwise is off.
 
 .TP
 .BI "Nice <value>"

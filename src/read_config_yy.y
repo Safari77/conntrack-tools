@@ -1626,6 +1626,10 @@ init_config(char *filename)
 	CONFIG(stats).syslog_facility = -1;
 	CONFIG(netlink).subsys_id = -1;
 
+#ifdef BUILD_SYSTEMD
+        CONFIG(systemd) = 1;
+#endif /* BUILD_SYSTEMD */
+
 	/* Initialize list of user-space helpers */
 	INIT_LIST_HEAD(&CONFIG(cthelper).list);
 
