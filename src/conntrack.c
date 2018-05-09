@@ -2608,10 +2608,10 @@ int main(int argc, char *argv[])
 			nfct_filter_dump_set_attr(filter_dump,
 						  NFCT_FILTER_DUMP_MARK,
 						  &tmpl.filter_mark_kernel);
-			nfct_filter_dump_set_attr_u8(filter_dump,
-						     NFCT_FILTER_DUMP_L3NUM,
-						     family);
 		}
+		nfct_filter_dump_set_attr_u8(filter_dump,
+					     NFCT_FILTER_DUMP_L3NUM,
+					     family);
 
 		if (options & CT_OPT_ZERO)
 			res = nfct_query(cth, NFCT_Q_DUMP_FILTER_RESET,
@@ -2714,10 +2714,10 @@ int main(int argc, char *argv[])
 			nfct_filter_dump_set_attr(filter_dump,
 						  NFCT_FILTER_DUMP_MARK,
 						  &tmpl.filter_mark_kernel);
-			nfct_filter_dump_set_attr_u8(filter_dump,
-						     NFCT_FILTER_DUMP_L3NUM,
-						     family);
 		}
+		nfct_filter_dump_set_attr_u8(filter_dump,
+					     NFCT_FILTER_DUMP_L3NUM,
+					     family);
 
 		res = nfct_query(cth, NFCT_Q_DUMP_FILTER, filter_dump);
 
