@@ -854,6 +854,7 @@ enum {
 	_O_ID	= (1 << 3),
 	_O_KTMS	= (1 << 4),
 	_O_CL	= (1 << 5),
+	_O_US	= (1 << 6),
 };
 
 enum {
@@ -864,16 +865,16 @@ enum {
 };
 
 static struct parse_parameter {
-	const char	*parameter[6];
+	const char	*parameter[7];
 	size_t  size;
-	unsigned int value[6];
+	unsigned int value[7];
 } parse_array[PARSE_MAX] = {
 	{ {"ASSURED", "SEEN_REPLY", "UNSET", "FIXED_TIMEOUT", "EXPECTED"}, 5,
 	  { IPS_ASSURED, IPS_SEEN_REPLY, 0, IPS_FIXED_TIMEOUT, IPS_EXPECTED} },
 	{ {"ALL", "NEW", "UPDATES", "DESTROY"}, 4,
 	  { CT_EVENT_F_ALL, CT_EVENT_F_NEW, CT_EVENT_F_UPD, CT_EVENT_F_DEL } },
-	{ {"xml", "extended", "timestamp", "id", "ktimestamp", "labels", }, 6,
-	  { _O_XML, _O_EXT, _O_TMS, _O_ID, _O_KTMS, _O_CL },
+	{ {"xml", "extended", "timestamp", "id", "ktimestamp", "labels", "userspace" }, 7,
+	  { _O_XML, _O_EXT, _O_TMS, _O_ID, _O_KTMS, _O_CL, _O_US },
 	},
 };
 
@@ -1427,6 +1428,7 @@ static int event_cb(const struct nlmsghdr *nlh, void *data)
 	enum nf_conntrack_msg_type type;
 	unsigned int op_flags = 0;
 	struct nf_conntrack *ct;
+	bool userspace = false;
 	char buf[1024];
 
 	switch(nlh->nlmsg_type & 0xff) {
@@ -1480,7 +1482,14 @@ static int event_cb(const struct nlmsghdr *nlh, void *data)
 
 	nfct_snprintf_labels(buf, sizeof(buf), ct, type, op_type, op_flags, labelmap);
 
-	printf("%s\n", buf);
+	if (output_mask & _O_US) {
+		if (nlh->nlmsg_pid)
+			userspace = true;
+		else
+			userspace = false;
+	}
+
+	printf("%s%s\n", buf, userspace ? " [USERSPACE]" : "");
 	fflush(stdout);
 
 	counter++;
