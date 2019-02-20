@@ -1848,14 +1848,14 @@ static struct nfct_mnl_socket {
 	uint32_t		portid;
 } sock;
 
-static int nfct_mnl_socket_open(void)
+static int nfct_mnl_socket_open(unsigned int events)
 {
 	sock.mnl = mnl_socket_open(NETLINK_NETFILTER);
 	if (sock.mnl == NULL) {
 		perror("mnl_socket_open");
 		return -1;
 	}
-	if (mnl_socket_bind(sock.mnl, 0, MNL_SOCKET_AUTOPID) < 0) {
+	if (mnl_socket_bind(sock.mnl, events, MNL_SOCKET_AUTOPID) < 0) {
 		perror("mnl_socket_bind");
 		return -1;
 	}
@@ -2566,7 +2566,7 @@ int main(int argc, char *argv[])
 
 	case CT_LIST:
 		if (type == CT_TABLE_DYING) {
-			if (nfct_mnl_socket_open() < 0)
+			if (nfct_mnl_socket_open(0) < 0)
 				exit_error(OTHER_PROBLEM, "Can't open handler");
 
 			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
@@ -2576,7 +2576,7 @@ int main(int argc, char *argv[])
 			nfct_mnl_socket_close();
 			break;
 		} else if (type == CT_TABLE_UNCONFIRMED) {
-			if (nfct_mnl_socket_open() < 0)
+			if (nfct_mnl_socket_open(0) < 0)
 				exit_error(OTHER_PROBLEM, "Can't open handler");
 
 			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
@@ -2779,7 +2779,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s v%s (conntrack-tools): ",PROGNAME,VERSION);
 		fprintf(stderr,"expectation table has been emptied.\n");
 		break;
-		
+
 	case CT_EVENT:
 		if (options & CT_OPT_EVENT_MASK) {
 			unsigned int nl_events = 0;
@@ -2860,7 +2860,7 @@ int main(int argc, char *argv[])
 		/* If we fail with netlink, fall back to /proc to ensure
 		 * backward compatibility.
 		 */
-		if (nfct_mnl_socket_open() < 0)
+		if (nfct_mnl_socket_open(0) < 0)
 			goto try_proc_count;
 
 		res = nfct_mnl_get(NFNL_SUBSYS_CTNETLINK,
@@ -2905,7 +2905,7 @@ try_proc_count:
 		/* If we fail with netlink, fall back to /proc to ensure
 		 * backward compatibility.
 		 */
-		if (nfct_mnl_socket_open() < 0)
+		if (nfct_mnl_socket_open(0) < 0)
 			goto try_proc;
 
 		res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
@@ -2924,7 +2924,7 @@ try_proc_count:
 		/* If we fail with netlink, fall back to /proc to ensure
 		 * backward compatibility.
 		 */
-		if (nfct_mnl_socket_open() < 0)
+		if (nfct_mnl_socket_open(0) < 0)
 			goto try_proc;
 
 		res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK_EXP,
