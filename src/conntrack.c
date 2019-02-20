@@ -64,6 +64,11 @@
 #include <libmnl/libmnl.h>
 #include <libnetfilter_conntrack/libnetfilter_conntrack.h>
 
+static struct nfct_mnl_socket {
+	struct mnl_socket	*mnl;
+	uint32_t		portid;
+} sock;
+
 struct u32_mask {
 	uint32_t value;
 	uint32_t mask;
@@ -1397,7 +1402,7 @@ event_sighandler(int s)
 
 	fprintf(stderr, "%s v%s (conntrack-tools): ", PROGNAME, VERSION);
 	fprintf(stderr, "%d flow events have been shown.\n", counter);
-	nfct_close(cth);
+	mnl_socket_close(sock.mnl);
 	exit(0);
 }
 
@@ -1415,17 +1420,40 @@ exp_event_sighandler(int s)
 	exit(0);
 }
 
-static int event_cb(enum nf_conntrack_msg_type type,
-		    struct nf_conntrack *ct,
-		    void *data)
+static int event_cb(const struct nlmsghdr *nlh, void *data)
 {
-	char buf[1024];
-	struct nf_conntrack *obj = data;
 	unsigned int op_type = NFCT_O_DEFAULT;
+	struct nf_conntrack *obj = data;
+	enum nf_conntrack_msg_type type;
 	unsigned int op_flags = 0;
+	struct nf_conntrack *ct;
+	char buf[1024];
+
+	switch(nlh->nlmsg_type & 0xff) {
+	case IPCTNL_MSG_CT_NEW:
+		if (nlh->nlmsg_flags & NLM_F_CREATE)
+			type = NFCT_T_NEW;
+		else
+			type = NFCT_T_UPDATE;
+		break;
+	case IPCTNL_MSG_CT_DELETE:
+		type = NFCT_T_DESTROY;
+		break;
+	default:
+		/* Unknown event type. */
+		type = 0;
+		break;
+	}
+
+	ct = nfct_new();
+	if (!ct)
+		goto out;
+
+	if (nfct_nlmsg_parse(nlh, ct) < 0)
+		goto out;
 
 	if (nfct_filter(obj, ct))
-		return NFCT_CB_CONTINUE;
+		goto out;
 
 	if (output_mask & _O_XML) {
 		op_type = NFCT_O_XML;
@@ -1434,7 +1462,7 @@ static int event_cb(enum nf_conntrack_msg_type type,
 			printf("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 			       "<conntrack>\n");
 		}
-	} 
+	}
 	if (output_mask & _O_EXT)
 		op_flags = NFCT_OF_SHOW_LAYER3;
 	if (output_mask & _O_TMS) {
@@ -1456,8 +1484,9 @@ static int event_cb(enum nf_conntrack_msg_type type,
 	fflush(stdout);
 
 	counter++;
-
-	return NFCT_CB_CONTINUE;
+out:
+	nfct_destroy(ct);
+	return MNL_CB_OK;
 }
 
 static int dump_cb(enum nf_conntrack_msg_type type,
@@ -1842,11 +1871,6 @@ out_err:
 	fclose(fd);
 	return ret;
 }
-
-static struct nfct_mnl_socket {
-	struct mnl_socket	*mnl;
-	uint32_t		portid;
-} sock;
 
 static int nfct_mnl_socket_open(unsigned int events)
 {
@@ -2791,42 +2815,64 @@ int main(int argc, char *argv[])
 			if (event_mask & CT_EVENT_F_DEL)
 				nl_events |= NF_NETLINK_CONNTRACK_DESTROY;
 
-			cth = nfct_open(CONNTRACK, nl_events);
+			res = nfct_mnl_socket_open(nl_events);
 		} else {
-			cth = nfct_open(CONNTRACK,
-					NF_NETLINK_CONNTRACK_NEW |
-					NF_NETLINK_CONNTRACK_UPDATE |
-					NF_NETLINK_CONNTRACK_DESTROY);
+			res = nfct_mnl_socket_open(NF_NETLINK_CONNTRACK_NEW |
+						   NF_NETLINK_CONNTRACK_UPDATE |
+						   NF_NETLINK_CONNTRACK_DESTROY);
 		}
 
-		if (!cth)
-			exit_error(OTHER_PROBLEM, "Can't open handler");
+		if (res < 0)
+			exit_error(OTHER_PROBLEM, "Can't open netlink socket");
 
 		if (options & CT_OPT_BUFFERSIZE) {
-			size_t ret;
-			ret = nfnl_rcvbufsiz(nfct_nfnlh(cth), socketbuffersize);
+			socklen_t socklen = sizeof(socketbuffersize);
+
+			res = setsockopt(mnl_socket_get_fd(sock.mnl),
+					 SOL_SOCKET, SO_RCVBUFFORCE,
+					 &socketbuffersize,
+					 sizeof(socketbuffersize));
+			if (res < 0) {
+				setsockopt(mnl_socket_get_fd(sock.mnl),
+					   SOL_SOCKET, SO_RCVBUF,
+					   &socketbuffersize,
+					   socketbuffersize);
+			}
+			getsockopt(mnl_socket_get_fd(sock.mnl), SOL_SOCKET,
+				   SO_RCVBUF, &socketbuffersize, &socklen);
 			fprintf(stderr, "NOTICE: Netlink socket buffer size "
-					"has been set to %zu bytes.\n", ret);
+					"has been set to %zu bytes.\n",
+					socketbuffersize);
 		}
 
 		nfct_filter_init(family);
 
 		signal(SIGINT, event_sighandler);
 		signal(SIGTERM, event_sighandler);
-		nfct_callback_register(cth, NFCT_T_ALL, event_cb, tmpl.ct);
-		res = nfct_catch(cth);
-		if (res == -1) {
-			if (errno == ENOBUFS) {
-				fprintf(stderr, 
-					"WARNING: We have hit ENOBUFS! We "
-					"are losing events.\nThis message "
-					"means that the current netlink "
-					"socket buffer size is too small.\n"
-					"Please, check --buffer-size in "
-					"conntrack(8) manpage.\n");
+
+		while (1) {
+			char buf[MNL_SOCKET_BUFFER_SIZE];
+
+			res = mnl_socket_recvfrom(sock.mnl, buf, sizeof(buf));
+			if (res < 0) {
+				if (errno == ENOBUFS) {
+					fprintf(stderr,
+						"WARNING: We have hit ENOBUFS! We "
+						"are losing events.\nThis message "
+						"means that the current netlink "
+						"socket buffer size is too small.\n"
+						"Please, check --buffer-size in "
+						"conntrack(8) manpage.\n");
+					continue;
+				}
+				exit_error(OTHER_PROBLEM,
+					   "failed to received netlink event: %s",
+					   strerror(errno));
+				break;
 			}
+			res = mnl_cb_run(buf, res, 0, 0, event_cb, tmpl.ct);
 		}
-		nfct_close(cth);
+		mnl_socket_close(sock.mnl);
 		break;
 
 	case EXP_EVENT:
