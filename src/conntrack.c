@@ -628,7 +628,7 @@ static struct ctproto_handler *findproto(char *name, int *pnum)
 	}
 	/* using a protocol number? */
 	protonum = atoi(name);
-	if (protonum > 0 && protonum <= IPPROTO_MAX) {
+	if (protonum >= 0 && protonum <= IPPROTO_MAX) {
 		/* try lookup by number, perhaps this protocol is supported */
 		list_for_each_entry(cur, &proto_list, head) {
 			if (cur->protonum == protonum) {
