@@ -25,6 +25,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <limits.h>
 #include "conntrackd.h"
 #include "bitops.h"
 #include "cidr.h"
@@ -650,7 +651,7 @@ unix_options:
 
 unix_option : T_PATH T_PATH_VAL
 {
-	strcpy(conf.local.path, $2);
+	strncpy(conf.local.path, $2, PATH_MAX);
 };
 
 unix_option : T_BACKLOG T_NUMBER
