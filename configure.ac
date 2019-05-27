@@ -50,6 +50,8 @@ AC_ARG_ENABLE([systemd],
         AS_HELP_STRING([--enable-systemd], [Build systemd support]),
         [enable_systemd="$enableval"], [enable_systemd="no"])
 
+AC_CHECK_HEADER([rpc/rpc_msg.h], [AC_SUBST([LIBTIRPC_CFLAGS],'')], [PKG_CHECK_MODULES([LIBTIRPC], [libtirpc])])
+
 PKG_CHECK_MODULES([LIBNFNETLINK], [libnfnetlink >= 1.0.1])
 PKG_CHECK_MODULES([LIBMNL], [libmnl >= 1.0.3])
 PKG_CHECK_MODULES([LIBNETFILTER_CONNTRACK], [libnetfilter_conntrack >= 1.0.7])

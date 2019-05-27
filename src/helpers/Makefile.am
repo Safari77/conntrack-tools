@@ -31,7 +31,7 @@ ct_helper_mdns_la_CFLAGS = $(HELPER_CFLAGS)
 
 ct_helper_rpc_la_SOURCES = rpc.c
 ct_helper_rpc_la_LDFLAGS = $(HELPER_LDFLAGS)
-ct_helper_rpc_la_CFLAGS = $(HELPER_CFLAGS)
+ct_helper_rpc_la_CFLAGS = $(HELPER_CFLAGS) @LIBTIRPC_CFLAGS@
 
 ct_helper_tftp_la_SOURCES = tftp.c
 ct_helper_tftp_la_LDFLAGS = $(HELPER_LDFLAGS)
