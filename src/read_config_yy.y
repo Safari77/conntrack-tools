@@ -689,8 +689,13 @@ unix_options:
 
 unix_option : T_PATH T_PATH_VAL
 {
-	strncpy(conf.local.path, $2, PATH_MAX);
+	strncpy(conf.local.path, $2, UNIX_PATH_MAX);
 	free($2);
+	if (conf.local.path[UNIX_PATH_MAX - 1]) {
+		dlog(LOG_ERR, "UNIX Path is longer than %u characters",
+		     UNIX_PATH_MAX - 1);
+		exit(EXIT_FAILURE);
+	}
 };
 
 unix_option : T_BACKLOG T_NUMBER
