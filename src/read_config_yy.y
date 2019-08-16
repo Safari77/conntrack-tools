@@ -116,7 +116,12 @@ logfile_bool : T_LOG T_OFF
 
 logfile_path : T_LOG T_PATH_VAL
 {
-	strncpy(conf.logfile, $2, FILENAME_MAXLEN);
+	if (strlen($2) > FILENAME_MAXLEN) {
+		dlog(LOG_ERR, "LogFile path is longer than %u characters",
+		     FILENAME_MAXLEN);
+		exit(EXIT_FAILURE);
+	}
+	snprintf(conf.logfile, FILENAME_MAXLEN, "%s", $2);
 	free($2);
 };
 
@@ -166,7 +171,12 @@ syslog_facility : T_SYSLOG T_STRING
 
 lock : T_LOCK T_PATH_VAL
 {
-	strncpy(conf.lockfile, $2, FILENAME_MAXLEN);
+	if (strlen($2) > FILENAME_MAXLEN) {
+		dlog(LOG_ERR, "LockFile path is longer than %u characters",
+		     FILENAME_MAXLEN);
+		exit(EXIT_FAILURE);
+	}
+	snprintf(conf.lockfile, FILENAME_MAXLEN, "%s", $2);
 	free($2);
 };
 
@@ -689,13 +699,13 @@ unix_options:
 
 unix_option : T_PATH T_PATH_VAL
 {
-	strncpy(conf.local.path, $2, UNIX_PATH_MAX);
-	free($2);
-	if (conf.local.path[UNIX_PATH_MAX - 1]) {
-		dlog(LOG_ERR, "UNIX Path is longer than %u characters",
-		     UNIX_PATH_MAX - 1);
+	if (strlen($2) > UNIX_PATH_MAX) {
+		dlog(LOG_ERR, "Path is longer than %u characters",
+		     UNIX_PATH_MAX);
 		exit(EXIT_FAILURE);
 	}
+	snprintf(conf.local.path, UNIX_PATH_MAX, "%s", $2);
+	free($2);
 };
 
 unix_option : T_BACKLOG T_NUMBER
@@ -1381,7 +1391,12 @@ stat_logfile_bool : T_LOG T_OFF
 
 stat_logfile_path : T_LOG T_PATH_VAL
 {
-	strncpy(conf.stats.logfile, $2, FILENAME_MAXLEN);
+	if (strlen($2) > FILENAME_MAXLEN) {
+		dlog(LOG_ERR, "stats LogFile path is longer than %u characters",
+		     FILENAME_MAXLEN);
+		exit(EXIT_FAILURE);
+	}
+	snprintf(conf.stats.logfile, FILENAME_MAXLEN, "%s", $2);
 	free($2);
 };
 
@@ -1589,11 +1604,15 @@ helper_type: T_HELPER_POLICY T_STRING '{' helper_policy_list '}'
 		exit(EXIT_FAILURE);
 		break;
 	}
+	if (strlen($2) > CTD_HELPER_NAME_LEN) {
+		dlog(LOG_ERR, "Helper Policy is longer than %u characters",
+		     CTD_HELPER_NAME_LEN);
+		exit(EXIT_FAILURE);
+	}
 
 	policy = (struct ctd_helper_policy *) &e->data;
-	strncpy(policy->name, $2, CTD_HELPER_NAME_LEN);
+	snprintf(policy->name, CTD_HELPER_NAME_LEN, "%s", $2);
 	free($2);
-	policy->name[CTD_HELPER_NAME_LEN-1] = '\0';
 	/* Now object is complete. */
 	e->type = SYMBOL_HELPER_POLICY_EXPECT_ROOT;
 	stack_item_push(&symbol_stack, e);
