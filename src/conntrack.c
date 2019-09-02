@@ -2210,7 +2210,7 @@ nfct_build_netmask(uint32_t *dst, int b, int n)
 			dst[i] = 0xffffffff;
 			b -= 32;
 		} else if (b > 0) {
-			dst[i] = (1 << b) - 1;
+			dst[i] = htonl(~0u << (32 - b));
 			b = 0;
 		} else {
 			dst[i] = 0;
