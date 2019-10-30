@@ -530,7 +530,7 @@ Default is \fB/var/lock/conntrack.lock\fP.
 .TP
 .BI "NetlinkBufferSize <value>"
 Netlink event socket buffer size. If you do not specify this clause, the
-default buffer size value in \fB/proc/net/core/rmem_default\fP is used. This
+default buffer size value in \fB/proc/sys/net/core/rmem_default\fP is used. This
 default value is usually around \fB100 Kbytes\fP which is fairly small for
 busy firewalls. This leads to event message dropping and high CPU consumption.
 
