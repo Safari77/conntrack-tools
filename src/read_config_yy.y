@@ -467,7 +467,7 @@ udp_option : T_IPV6_DEST_ADDR T_IP
 		dlog(LOG_WARNING, "%s is not a valid IPv6 address", $2);
 		free($2);
 		break;
-	} else {
+	} else if (err < 0) {
 		dlog(LOG_ERR, "inet_pton(): IPv6 unsupported!");
 		exit(EXIT_FAILURE);
 	}
