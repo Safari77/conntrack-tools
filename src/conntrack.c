@@ -1986,11 +1986,13 @@ static int nfct_stats_attr_cb(const struct nlattr *attr, void *data)
 	return MNL_CB_OK;
 }
 
+#define UNKNOWN_STATS_NUM 4
+
 static int nfct_stats_cb(const struct nlmsghdr *nlh, void *data)
 {
-	struct nlattr *tb[CTA_STATS_MAX+1] = {};
+	struct nlattr *tb[CTA_STATS_MAX + UNKNOWN_STATS_NUM + 1] = {};
 	struct nfgenmsg *nfg = mnl_nlmsg_get_payload(nlh);
-	const char *attr2name[CTA_STATS_MAX+1] = {
+	const char *attr2name[CTA_STATS_MAX + UNKNOWN_STATS_NUM + 1] = {
 		[CTA_STATS_SEARCHED]	= "searched",
 		[CTA_STATS_FOUND]	= "found",
 		[CTA_STATS_NEW]		= "new",
@@ -2004,6 +2006,15 @@ static int nfct_stats_cb(const struct nlmsghdr *nlh, void *data)
 		[CTA_STATS_EARLY_DROP]	= "early_drop",
 		[CTA_STATS_ERROR]	= "error",
 		[CTA_STATS_SEARCH_RESTART] = "search_restart",
+		[CTA_STATS_CLASH_RESOLVE] = "clash_resolve",
+
+		/* leave at end.  Allows to show counters supported
+		 * by newer kernel with older conntrack-tools release.
+		 */
+		[CTA_STATS_MAX + 1] = "unknown1",
+		[CTA_STATS_MAX + 2] = "unknown2",
+		[CTA_STATS_MAX + 3] = "unknown3",
+		[CTA_STATS_MAX + 4] = "unknown4",
 	};
 	int i;
 
@@ -2011,7 +2022,7 @@ static int nfct_stats_cb(const struct nlmsghdr *nlh, void *data)
 
 	printf("cpu=%-4u\t", ntohs(nfg->res_id));
 
-	for (i=0; i<CTA_STATS_MAX+1; i++) {
+	for (i=0; i <= CTA_STATS_MAX + UNKNOWN_STATS_NUM; i++) {
 		if (tb[i]) {
 			printf("%s=%u ",
 				attr2name[i], ntohl(mnl_attr_get_u32(tb[i])));
