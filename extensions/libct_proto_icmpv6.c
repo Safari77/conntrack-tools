@@ -81,18 +81,24 @@ static int parse(char c,
 			tmp = atoi(optarg);
 			nfct_set_attr_u8(ct, ATTR_ICMP_TYPE, tmp);
 			nfct_set_attr_u8(ct, ATTR_L4PROTO, IPPROTO_ICMPV6);
+			if (nfct_attr_is_set(ct, ATTR_REPL_L3PROTO))
+				nfct_set_attr_u8(ct, ATTR_REPL_L4PROTO, IPPROTO_ICMPV6);
 			*flags |= CT_ICMP_TYPE;
 			break;
 		case '2':
 			tmp = atoi(optarg);
 			nfct_set_attr_u8(ct, ATTR_ICMP_CODE, tmp);
 			nfct_set_attr_u8(ct, ATTR_L4PROTO, IPPROTO_ICMPV6);
+			if (nfct_attr_is_set(ct, ATTR_REPL_L3PROTO))
+				nfct_set_attr_u8(ct, ATTR_REPL_L4PROTO, IPPROTO_ICMPV6);
 			*flags |= CT_ICMP_CODE;
 			break;
 		case '3':
 			id = htons(atoi(optarg));
 			nfct_set_attr_u16(ct, ATTR_ICMP_ID, id);
 			nfct_set_attr_u8(ct, ATTR_L4PROTO, IPPROTO_ICMPV6);
+			if (nfct_attr_is_set(ct, ATTR_REPL_L3PROTO))
+				nfct_set_attr_u8(ct, ATTR_REPL_L4PROTO, IPPROTO_ICMPV6);
 			*flags |= CT_ICMP_ID;
 			break;
 	}
