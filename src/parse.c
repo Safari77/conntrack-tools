@@ -205,6 +205,11 @@ static struct ct_parser h[NTA_MAX] = {
 		.parse	= ct_parse_synproxy,
 		.size	= NTA_SIZE(sizeof(struct nta_attr_synproxy)),
 	},
+	[NTA_ZONE] = {
+		.parse	= ct_parse_u16,
+		.attr	= ATTR_ZONE,
+		.size	= NTA_SIZE(sizeof(uint16_t)),
+	},
 };
 
 static void

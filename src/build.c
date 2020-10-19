@@ -315,6 +315,9 @@ void ct2msg(const struct nf_conntrack *ct, struct nethdr *n)
 	    nfct_attr_is_set(ct, ATTR_SYNPROXY_ITS) &&
 	    nfct_attr_is_set(ct, ATTR_SYNPROXY_TSOFF))
 		ct_build_synproxy(ct, n);
+
+	if (nfct_attr_is_set(ct, ATTR_ZONE))
+	    ct_build_u16(ct, ATTR_ZONE, n, NTA_ZONE);
 }
 
 static void
