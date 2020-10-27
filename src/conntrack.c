@@ -41,6 +41,7 @@
 #include "conntrack.h"
 
 #include <stdio.h>
+#include <assert.h>
 #include <getopt.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -2171,6 +2172,7 @@ nfct_filter_init(const int family)
 {
 	filter_family = family;
 	if (options & CT_OPT_MASK_SRC) {
+		assert(family != AF_UNSPEC);
 		if (!(options & CT_OPT_ORIG_SRC))
 			exit_error(PARAMETER_PROBLEM,
 			           "Can't use --mask-src without --src");
@@ -2178,6 +2180,7 @@ nfct_filter_init(const int family)
 	}
 
 	if (options & CT_OPT_MASK_DST) {
+		assert(family != AF_UNSPEC);
 		if (!(options & CT_OPT_ORIG_DST))
 			exit_error(PARAMETER_PROBLEM,
 			           "Can't use --mask-dst without --dst");
@@ -2574,9 +2577,22 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* default family */
-	if (family == AF_UNSPEC)
-		family = AF_INET;
+	/* default family only for the following commands */
+	if (family == AF_UNSPEC) {
+		switch (command) {
+		case CT_LIST:
+		case CT_UPDATE:
+		case CT_DELETE:
+		case CT_GET:
+		case CT_FLUSH:
+		case CT_EVENT:
+			break;
+		default:
+			family = AF_INET;
+			break;
+		}
+	}
+
 
 	/* we cannot check this combination with generic_opt_check. */
 	if (options & CT_OPT_ANY_NAT &&

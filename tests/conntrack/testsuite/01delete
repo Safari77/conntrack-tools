@@ -30,3 +30,8 @@
 -D -s 1.1.1.0/24 -d 2.2.2.0/24 ; OK
 # try same command again but with CIDR (no matching found)
 -D -s 1.1.1.0/24 -d 2.2.2.0/24 ; BAD
+# try to delete mismatching address family
+-D -s ::1 -d 2.2.2.2 ; BAD
+# try to delete IPv6 address without specifying IPv6 family
+-I -s ::1 -d ::2 -p tcp --sport 20 --dport 10 --state LISTEN -u SEEN_REPLY -t 40 ; OK
+-D -s ::1 ; OK
