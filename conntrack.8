@@ -109,7 +109,7 @@ Show the in-kernel connection tracking system statistics.
 Atomically zero counters after reading them.  This option is only valid in
 combination with the "\-L, \-\-dump" command options.
 .TP
-.BI "-o, --output [extended,xml,timestamp,id,ktimestamp,labels,userspace] "
+.BI "-o, --output [extended,xml,save,timestamp,id,ktimestamp,labels,userspace] "
 Display output in a certain format. With the extended output option, this tool
 displays the layer 3 information. With ktimestamp, it displays the in-kernel
 timestamp available since 2.6.38 (you can enable it via the \fBsysctl(8)\fP
@@ -375,6 +375,9 @@ additional information.
 .TP
 .B conntrack \-L \-o xml
 Show the connection tracking table in XML
+.TP
+.B conntrack \-L \-o save
+Show the connection tracking table in conntrack syntax format
 .TP
 .B conntrack \-L -f ipv6 -o extended
 Only dump IPv6 connections in /proc/net/nf_conntrack format, with
