@@ -198,6 +198,17 @@ parse_options(char c, struct nf_conntrack *ct,
 	return 1;
 }
 
+static const struct ct_print_opts sctp_print_opts[] = {
+	{ "--sport", ATTR_ORIG_PORT_SRC, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--dport", ATTR_ORIG_PORT_DST, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--reply-port-src", ATTR_REPL_PORT_SRC, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--reply-port-dst", ATTR_REPL_PORT_DST, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--state", ATTR_SCTP_STATE, CT_ATTR_TYPE_U8, SCTP_CONNTRACK_MAX, sctp_states },
+	{ "--orig-vtag", ATTR_SCTP_VTAG_ORIG, CT_ATTR_TYPE_BE32, 0, 0 },
+	{ "--reply-vtag", ATTR_SCTP_VTAG_REPL, CT_ATTR_TYPE_BE32, 0, 0 },
+	{},
+};
+
 #define SCTP_VALID_FLAGS_MAX   2
 static unsigned int dccp_valid_flags[SCTP_VALID_FLAGS_MAX] = {
 	CT_SCTP_ORIG_SPORT | CT_SCTP_ORIG_DPORT,
@@ -235,6 +246,7 @@ static struct ctproto_handler sctp = {
 	.protonum		= IPPROTO_SCTP,
 	.parse_opts		= parse_options,
 	.final_check		= final_check,
+	.print_opts		= sctp_print_opts,
 	.help			= help,
 	.opts			= opts,
 	.version		= VERSION,

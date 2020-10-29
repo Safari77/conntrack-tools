@@ -54,6 +54,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <time.h>
+#include <inttypes.h>
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
@@ -608,6 +609,252 @@ void register_proto(struct ctproto_handler *h)
 	list_add(&h->head, &proto_list);
 }
 
+#define BUFFER_SIZE(ret, size, len, offset) do {			\
+	if ((int)ret > (int)len)					\
+		ret = len;						\
+	size += ret;							\
+	offset += ret;							\
+	len -= ret;							\
+} while(0)
+
+static int ct_snprintf_u32_bitmap(char *buf, size_t size,
+				  const struct nf_conntrack *ct,
+				  const struct ct_print_opts *attr)
+{
+	unsigned int offset = 0, ret, len = size;
+	bool found = false;
+	uint32_t val;
+	int i;
+
+	val = nfct_get_attr_u32(ct, attr->type);
+
+	for (i = 0; i < attr->val_mapping_count; i++) {
+		if (!(val & (1 << i)))
+			continue;
+		if (!attr->val_mapping[i])
+			continue;
+
+		ret = snprintf(buf + offset, len, "%s,", attr->val_mapping[i]);
+		BUFFER_SIZE(ret, size, len, offset);
+		found = true;
+	}
+
+	if (found) {
+		offset--;
+		ret = snprintf(buf + offset, len, " ");
+		BUFFER_SIZE(ret, size, len, offset);
+	}
+
+	return offset;
+}
+
+static int ct_snprintf_attr(char *buf, size_t size,
+			    const struct nf_conntrack *ct,
+			    const struct ct_print_opts *attr)
+{
+	char ipstr[INET6_ADDRSTRLEN] = {};
+	unsigned int offset = 0;
+	int type = attr->type;
+	int len = size, ret;
+
+	ret = snprintf(buf, len, "%s ", attr->name);
+	BUFFER_SIZE(ret, size, len, offset);
+
+	switch (attr->datatype) {
+	case CT_ATTR_TYPE_U8:
+		if (attr->val_mapping)
+			ret = snprintf(buf + offset, len, "%s ",
+				       attr->val_mapping[nfct_get_attr_u8(ct, type)]);
+		else
+			ret = snprintf(buf + offset, len, "%u ",
+				       nfct_get_attr_u8(ct, type));
+		break;
+	case CT_ATTR_TYPE_BE16:
+		ret = snprintf(buf + offset, len, "%u ",
+			       ntohs(nfct_get_attr_u16(ct, type)));
+		break;
+	case CT_ATTR_TYPE_U16:
+		ret = snprintf(buf + offset, len, "%u ",
+			       nfct_get_attr_u16(ct, type));
+		break;
+	case CT_ATTR_TYPE_BE32:
+		ret = snprintf(buf + offset, len, "%u ",
+			       ntohl(nfct_get_attr_u32(ct, type)));
+		break;
+	case CT_ATTR_TYPE_U32:
+		ret = snprintf(buf + offset, len, "%u ",
+			       nfct_get_attr_u32(ct, type));
+		break;
+	case CT_ATTR_TYPE_U64:
+		ret = snprintf(buf + offset, len, "%lu ",
+			       nfct_get_attr_u64(ct, type));
+		break;
+	case CT_ATTR_TYPE_IPV4:
+		inet_ntop(AF_INET, nfct_get_attr(ct, type),
+			  ipstr, sizeof(ipstr));
+		ret = snprintf(buf + offset, len, "%s ", ipstr);
+		break;
+	case CT_ATTR_TYPE_IPV6:
+		inet_ntop(AF_INET6, nfct_get_attr(ct, type),
+			  ipstr, sizeof(ipstr));
+		ret = snprintf(buf + offset, len, "%s ", ipstr);
+		break;
+	case CT_ATTR_TYPE_U32_BITMAP:
+		ret = ct_snprintf_u32_bitmap(buf + offset, len, ct, attr);
+		if (ret == 0 && type == ATTR_STATUS)
+			ret = snprintf(buf + offset, len, "UNSET ");
+		break;
+	default:
+		/* Unsupported datatype, should not ever happen */
+		ret = 0;
+		break;
+	}
+	BUFFER_SIZE(ret, size, len, offset);
+
+	return offset;
+}
+
+int ct_snprintf_opts(char *buf, unsigned int len, const struct nf_conntrack *ct,
+		     const struct ct_print_opts *attrs)
+{
+	unsigned int size = 0, offset = 0, ret;
+	int i;
+
+	for (i = 0; attrs[i].name; ++i) {
+		if (!nfct_attr_is_set(ct, attrs[i].type))
+			continue;
+
+		ret = ct_snprintf_attr(buf + offset, len, ct, &attrs[i]);
+		BUFFER_SIZE(ret, size, len, offset);
+	}
+
+	return offset;
+}
+
+static const struct ct_print_opts attrs_ip_map[] = {
+	[ATTR_ORIG_IPV4_SRC] = { "-s", ATTR_ORIG_IPV4_SRC, CT_ATTR_TYPE_IPV4, 0, 0 },
+	[ATTR_ORIG_IPV4_DST] = { "-d", ATTR_ORIG_IPV4_DST, CT_ATTR_TYPE_IPV4, 0, 0 },
+	[ATTR_DNAT_IPV4]     = { "-g", ATTR_REPL_IPV4_SRC, CT_ATTR_TYPE_IPV4, 0, 0 },
+	[ATTR_SNAT_IPV4]     = { "-n", ATTR_REPL_IPV4_DST, CT_ATTR_TYPE_IPV4, 0, 0 },
+	[ATTR_REPL_IPV4_SRC] = { "-r", ATTR_REPL_IPV4_SRC, CT_ATTR_TYPE_IPV4, 0, 0 },
+	[ATTR_REPL_IPV4_DST] = { "-q", ATTR_REPL_IPV4_DST, CT_ATTR_TYPE_IPV4, 0, 0 },
+	[ATTR_ORIG_IPV6_SRC] = { "-s", ATTR_ORIG_IPV6_SRC, CT_ATTR_TYPE_IPV6, 0, 0 },
+	[ATTR_ORIG_IPV6_DST] = { "-d", ATTR_ORIG_IPV6_DST, CT_ATTR_TYPE_IPV6, 0, 0 },
+	[ATTR_DNAT_IPV6]     = { "-g", ATTR_REPL_IPV6_SRC, CT_ATTR_TYPE_IPV6, 0, 0 },
+	[ATTR_SNAT_IPV6]     = { "-n", ATTR_REPL_IPV6_DST, CT_ATTR_TYPE_IPV6, 0, 0 },
+	[ATTR_REPL_IPV6_SRC] = { "-r", ATTR_REPL_IPV6_SRC, CT_ATTR_TYPE_IPV6, 0, 0 },
+	[ATTR_REPL_IPV6_DST] = { "-q", ATTR_REPL_IPV6_DST, CT_ATTR_TYPE_IPV6, 0, 0 },
+};
+
+static const char *conntrack_status_map[] = {
+	[IPS_SEEN_REPLY_BIT] = "SEEN_REPLY",
+	[IPS_ASSURED_BIT] = "ASSURED",
+	[IPS_FIXED_TIMEOUT_BIT] = "FIXED_TIMEOUT",
+	[IPS_EXPECTED_BIT] = "EXPECTED"
+};
+
+static struct ct_print_opts attrs_generic[] = {
+	{ "-t", ATTR_TIMEOUT, CT_ATTR_TYPE_U32, 0, 0 },
+	{ "-u", ATTR_STATUS, CT_ATTR_TYPE_U32_BITMAP,
+		sizeof(conntrack_status_map)/sizeof(conntrack_status_map[0]),
+		conntrack_status_map },
+	{ "-c", ATTR_SECMARK, CT_ATTR_TYPE_U32, 0, 0 },
+	{ "-w", ATTR_ZONE, CT_ATTR_TYPE_U16, 0, 0 },
+	{ "--orig-zone", ATTR_ORIG_ZONE, CT_ATTR_TYPE_U16, 0, 0 },
+	{ "--reply-zone", ATTR_REPL_ZONE, CT_ATTR_TYPE_U16, 0, 0 },
+	{},
+};
+
+static int ct_save_snprintf(char *buf, size_t len,
+			    const struct nf_conntrack *ct,
+			    struct nfct_labelmap *map,
+			    enum nf_conntrack_msg_type type)
+{
+	struct ct_print_opts tuple_attr_print[5] = {};
+	unsigned int size = 0, offset = 0;
+	struct ctproto_handler *cur;
+	uint8_t l3proto, l4proto;
+	int tuple_attrs[4] = {};
+	unsigned i;
+	int ret;
+
+	switch (type) {
+	case NFCT_T_NEW:
+		ret = snprintf(buf + offset, len, "-I ");
+		BUFFER_SIZE(ret, size, len, offset);
+		break;
+	case NFCT_T_UPDATE:
+		ret = snprintf(buf + offset, len, "-U ");
+		BUFFER_SIZE(ret, size, len, offset);
+		break;
+	case NFCT_T_DESTROY:
+		ret = snprintf(buf + offset, len, "-D ");
+		BUFFER_SIZE(ret, size, len, offset);
+		break;
+	default:
+		ret = 0;
+		break;
+	}
+
+	ret = ct_snprintf_opts(buf + offset, len, ct, attrs_generic);
+	BUFFER_SIZE(ret, size, len, offset);
+
+	l3proto = nfct_get_attr_u8(ct, ATTR_ORIG_L3PROTO);
+	if (!l3proto)
+		l3proto = nfct_get_attr_u8(ct, ATTR_REPL_L3PROTO);
+	switch (l3proto) {
+	case AF_INET:
+		tuple_attrs[0] = ATTR_ORIG_IPV4_SRC;
+		tuple_attrs[1] = ATTR_ORIG_IPV4_DST;
+		tuple_attrs[2] = nfct_getobjopt(ct, NFCT_GOPT_IS_DNAT) ?
+					ATTR_DNAT_IPV4 : ATTR_REPL_IPV4_SRC;
+		tuple_attrs[3] = nfct_getobjopt(ct, NFCT_GOPT_IS_SNAT) ?
+					ATTR_SNAT_IPV4 : ATTR_REPL_IPV4_DST;
+		break;
+	case AF_INET6:
+		tuple_attrs[0] = ATTR_ORIG_IPV6_SRC;
+		tuple_attrs[1] = ATTR_ORIG_IPV6_DST;
+		tuple_attrs[2] = nfct_getobjopt(ct, NFCT_GOPT_IS_DNAT) ?
+					ATTR_DNAT_IPV6 : ATTR_REPL_IPV6_SRC;
+		tuple_attrs[3] = nfct_getobjopt(ct, NFCT_GOPT_IS_SNAT) ?
+					ATTR_SNAT_IPV6 : ATTR_REPL_IPV6_DST;
+		break;
+	default:
+		fprintf(stderr, "WARNING: unsupported l3proto %d, skipping.\n",
+			l3proto);
+		return 0;
+	}
+
+	for (i = 0; i < sizeof(tuple_attrs) / sizeof(tuple_attrs[0]); i++) {
+		memcpy(&tuple_attr_print[i], &attrs_ip_map[tuple_attrs[i]],
+		       sizeof(tuple_attr_print[0]));
+	}
+
+	ret = ct_snprintf_opts(buf + offset, len, ct, tuple_attr_print);
+	BUFFER_SIZE(ret, size, len, offset);
+
+	l4proto = nfct_get_attr_u8(ct, ATTR_L4PROTO);
+
+	/* is it in the list of supported protocol? */
+	list_for_each_entry(cur, &proto_list, head) {
+		if (cur->protonum != l4proto)
+			continue;
+
+		ret = snprintf(buf + offset, len, "-p %s ", cur->name);
+		BUFFER_SIZE(ret, size, len, offset);
+
+		ret = ct_snprintf_opts(buf + offset, len, ct, cur->print_opts);
+		BUFFER_SIZE(ret, size, len, offset);
+		break;
+	}
+
+	/* skip trailing space, if any */
+	for (; size && buf[size-1] == ' '; --size)
+		buf[size-1] = '\0';
+
+	return size;
+}
+
 extern struct ctproto_handler ct_proto_unknown;
 
 static struct ctproto_handler *findproto(char *name, int *pnum)
@@ -857,6 +1104,7 @@ enum {
 	_O_KTMS	= (1 << 4),
 	_O_CL	= (1 << 5),
 	_O_US	= (1 << 6),
+	_O_SAVE	= (1 << 7),
 };
 
 enum {
@@ -867,7 +1115,7 @@ enum {
 };
 
 static struct parse_parameter {
-	const char	*parameter[7];
+	const char	*parameter[8];
 	size_t  size;
 	unsigned int value[8];
 } parse_array[PARSE_MAX] = {
@@ -875,8 +1123,8 @@ static struct parse_parameter {
 	  { IPS_ASSURED, IPS_SEEN_REPLY, 0, IPS_FIXED_TIMEOUT, IPS_EXPECTED, IPS_OFFLOAD, IPS_HW_OFFLOAD} },
 	{ {"ALL", "NEW", "UPDATES", "DESTROY"}, 4,
 	  { CT_EVENT_F_ALL, CT_EVENT_F_NEW, CT_EVENT_F_UPD, CT_EVENT_F_DEL } },
-	{ {"xml", "extended", "timestamp", "id", "ktimestamp", "labels", "userspace" }, 7,
-	  { _O_XML, _O_EXT, _O_TMS, _O_ID, _O_KTMS, _O_CL, _O_US },
+	{ {"xml", "extended", "timestamp", "id", "ktimestamp", "labels", "userspace", "save"}, 8,
+	  { _O_XML, _O_EXT, _O_TMS, _O_ID, _O_KTMS, _O_CL, _O_US, _O_SAVE },
 	},
 };
 
@@ -1462,6 +1710,11 @@ static int event_cb(const struct nlmsghdr *nlh, void *data)
 	    nfct_filter(obj, ct))
 		goto out;
 
+	if (output_mask & _O_SAVE) {
+		ct_save_snprintf(buf, sizeof(buf), ct, labelmap, type);
+		goto done;
+	}
+
 	if (output_mask & _O_XML) {
 		op_type = NFCT_O_XML;
 		if (dump_xml_header_done) {
@@ -1486,7 +1739,7 @@ static int event_cb(const struct nlmsghdr *nlh, void *data)
 		op_flags |= NFCT_OF_ID;
 
 	nfct_snprintf_labels(buf, sizeof(buf), ct, type, op_type, op_flags, labelmap);
-
+done:
 	if (output_mask & _O_US) {
 		if (nlh->nlmsg_pid)
 			userspace = true;
@@ -1515,6 +1768,11 @@ static int dump_cb(enum nf_conntrack_msg_type type,
 	if (nfct_filter(obj, ct))
 		return NFCT_CB_CONTINUE;
 
+	if (output_mask & _O_SAVE) {
+		ct_save_snprintf(buf, sizeof(buf), ct, labelmap, NFCT_T_NEW);
+		goto done;
+	}
+
 	if (output_mask & _O_XML) {
 		op_type = NFCT_O_XML;
 		if (dump_xml_header_done) {
@@ -1531,6 +1789,7 @@ static int dump_cb(enum nf_conntrack_msg_type type,
 		op_flags |= NFCT_OF_ID;
 
 	nfct_snprintf_labels(buf, sizeof(buf), ct, NFCT_T_UNKNOWN, op_type, op_flags, labelmap);
+done:
 	printf("%s\n", buf);
 
 	counter++;
@@ -1557,6 +1816,11 @@ static int delete_cb(enum nf_conntrack_msg_type type,
 			   "Operation failed: %s",
 			   err2str(errno, CT_DELETE));
 
+	if (output_mask & _O_SAVE) {
+		ct_save_snprintf(buf, sizeof(buf), ct, labelmap, NFCT_T_DESTROY);
+		goto done;
+	}
+
 	if (output_mask & _O_XML)
 		op_type = NFCT_O_XML;
 	if (output_mask & _O_EXT)
@@ -1565,6 +1829,7 @@ static int delete_cb(enum nf_conntrack_msg_type type,
 		op_flags |= NFCT_OF_ID;
 
 	nfct_snprintf(buf, sizeof(buf), ct, NFCT_T_UNKNOWN, op_type, op_flags);
+done:
 	printf("%s\n", buf);
 
 	counter++;
@@ -1580,6 +1845,11 @@ static int print_cb(enum nf_conntrack_msg_type type,
 	unsigned int op_type = NFCT_O_DEFAULT;
 	unsigned int op_flags = 0;
 
+	if (output_mask & _O_SAVE) {
+		ct_save_snprintf(buf, sizeof(buf), ct, labelmap, NFCT_T_NEW);
+		goto done;
+	}
+
 	if (output_mask & _O_XML)
 		op_type = NFCT_O_XML;
 	if (output_mask & _O_EXT)
@@ -1588,6 +1858,7 @@ static int print_cb(enum nf_conntrack_msg_type type,
 		op_flags |= NFCT_OF_ID;
 
 	nfct_snprintf_labels(buf, sizeof(buf), ct, NFCT_T_UNKNOWN, op_type, op_flags, labelmap);
+done:
 	printf("%s\n", buf);
 
 	return NFCT_CB_CONTINUE;
@@ -2451,6 +2722,10 @@ int main(int argc, char *argv[])
 			parse_parameter(optarg, &output_mask, PARSE_OUTPUT);
 			if (output_mask & _O_CL)
 				labelmap_init();
+			if ((output_mask & _O_SAVE) &&
+			    (output_mask & (_O_EXT |_O_TMS |_O_ID | _O_KTMS | _O_CL | _O_XML)))
+				exit_error(OTHER_PROBLEM,
+					   "cannot combine save output with any other output type, use -o save only");
 			break;
 		case 'z':
 			options |= CT_OPT_ZERO;

@@ -105,6 +105,13 @@ static int parse(char c,
 	return 1;
 }
 
+static const struct ct_print_opts icmpv6_print_opts[] = {
+	{"--icmpv6-type", ATTR_ICMP_TYPE, CT_ATTR_TYPE_U8, 0, 0},
+	{"--icmpv6-code", ATTR_ICMP_CODE, CT_ATTR_TYPE_U8, 0, 0},
+	{"--icmpv6-id", ATTR_ICMP_ID, CT_ATTR_TYPE_BE16, 0, 0},
+	{},
+};
+
 static void final_check(unsigned int flags,
 		        unsigned int cmd,
 		        struct nf_conntrack *ct)
@@ -119,6 +126,7 @@ static struct ctproto_handler icmpv6 = {
 	.protonum	= IPPROTO_ICMPV6,
 	.parse_opts	= parse,
 	.final_check	= final_check,
+	.print_opts	= icmpv6_print_opts,
 	.help		= help,
 	.opts		= opts,
 	.version	= VERSION,

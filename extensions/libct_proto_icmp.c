@@ -102,6 +102,13 @@ static int parse(char c,
 	return 1;
 }
 
+static const struct ct_print_opts icmp_print_opts[] = {
+	{ "--icmp-type", ATTR_ICMP_TYPE, CT_ATTR_TYPE_U8, 0, 0 },
+	{ "--icmp-code", ATTR_ICMP_CODE, CT_ATTR_TYPE_U8, 0, 0 },
+	{ "--icmp-id", ATTR_ICMP_ID, CT_ATTR_TYPE_BE16, 0, 0 },
+	{}
+};
+
 static void final_check(unsigned int flags,
 		        unsigned int cmd,
 		        struct nf_conntrack *ct)
@@ -117,6 +124,7 @@ static struct ctproto_handler icmp = {
 	.protonum	= IPPROTO_ICMP,
 	.parse_opts	= parse,
 	.final_check	= final_check,
+	.print_opts	= icmp_print_opts,
 	.help		= help,
 	.opts		= opts,
 	.version	= VERSION,

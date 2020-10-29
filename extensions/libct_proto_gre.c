@@ -144,6 +144,14 @@ static int parse_options(char c,
 	return 1;
 }
 
+static const struct ct_print_opts gre_print_opts[] = {
+	{ "--srckey", ATTR_ORIG_PORT_SRC, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--dstkey", ATTR_ORIG_PORT_DST, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--reply-key-src", ATTR_REPL_PORT_SRC, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--reply-key-dst", ATTR_REPL_PORT_DST, CT_ATTR_TYPE_BE16, 0, 0 },
+	{},
+};
+
 #define GRE_VALID_FLAGS_MAX   2
 static unsigned int gre_valid_flags[GRE_VALID_FLAGS_MAX] = {
        CT_GRE_ORIG_SKEY | CT_GRE_ORIG_DKEY,
@@ -181,6 +189,7 @@ static struct ctproto_handler gre = {
 	.protonum		= IPPROTO_GRE,
 	.parse_opts		= parse_options,
 	.final_check		= final_check,
+	.print_opts		= gre_print_opts,
 	.help			= help,
 	.opts			= opts,
 	.version		= VERSION,

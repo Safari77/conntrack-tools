@@ -144,6 +144,14 @@ static int parse_options(char c,
 	return 1;
 }
 
+static const struct ct_print_opts udp_print_opts[] = {
+	{"--sport", ATTR_ORIG_PORT_SRC, CT_ATTR_TYPE_BE16, 0, 0},
+	{"--dport", ATTR_ORIG_PORT_DST, CT_ATTR_TYPE_BE16, 0, 0},
+	{"--reply-port-src", ATTR_REPL_PORT_SRC, CT_ATTR_TYPE_BE16, 0, 0},
+	{"--reply-port-dst", ATTR_REPL_PORT_DST, CT_ATTR_TYPE_BE16, 0, 0},
+	{},
+};
+
 #define UDP_VALID_FLAGS_MAX   2
 static unsigned int udp_valid_flags[UDP_VALID_FLAGS_MAX] = {
        CT_UDP_ORIG_SPORT | CT_UDP_ORIG_DPORT,
@@ -181,6 +189,7 @@ static struct ctproto_handler udp = {
 	.protonum		= IPPROTO_UDP,
 	.parse_opts		= parse_options,
 	.final_check		= final_check,
+	.print_opts		= udp_print_opts,
 	.help			= help,
 	.opts			= opts,
 	.version		= VERSION,

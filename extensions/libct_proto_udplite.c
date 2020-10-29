@@ -148,6 +148,14 @@ static int parse_options(char c,
 	return 1;
 }
 
+static const struct ct_print_opts udplite_print_opts[] = {
+	{ "--sport", ATTR_ORIG_PORT_SRC, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--dport", ATTR_ORIG_PORT_DST, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--reply-port-src", ATTR_REPL_PORT_SRC, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--reply-port-dst", ATTR_REPL_PORT_DST, CT_ATTR_TYPE_BE16, 0, 0 },
+	{},
+};
+
 #define UDPLITE_VALID_FLAGS_MAX   2
 static unsigned int udplite_valid_flags[UDPLITE_VALID_FLAGS_MAX] = {
        CT_UDPLITE_ORIG_SPORT | CT_UDPLITE_ORIG_DPORT,
@@ -186,6 +194,7 @@ static struct ctproto_handler udplite = {
 	.protonum		= IPPROTO_UDPLITE,
 	.parse_opts		= parse_options,
 	.final_check		= final_check,
+	.print_opts		= udplite_print_opts,
 	.help			= help,
 	.opts			= opts,
 	.version		= VERSION,

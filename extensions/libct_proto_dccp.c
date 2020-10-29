@@ -198,6 +198,22 @@ static int parse_options(char c,
 	return 1;
 }
 
+
+static const char *dccp_roles[__DCCP_CONNTRACK_ROLE_MAX] = {
+	[DCCP_CONNTRACK_ROLE_CLIENT]	= "client",
+	[DCCP_CONNTRACK_ROLE_SERVER]	= "server",
+};
+
+static const struct ct_print_opts dccp_print_opts[] = {
+	{ "--sport", ATTR_ORIG_PORT_SRC, CT_ATTR_TYPE_BE16, 0, NULL },
+	{ "--dport", ATTR_ORIG_PORT_DST, CT_ATTR_TYPE_BE16, 0, NULL },
+	{ "--reply-port-src", ATTR_REPL_PORT_SRC, CT_ATTR_TYPE_BE16, 0, NULL },
+	{ "--reply-port-dst", ATTR_REPL_PORT_DST, CT_ATTR_TYPE_BE16, 0, NULL },
+	{ "--state", ATTR_DCCP_STATE, CT_ATTR_TYPE_U8, DCCP_CONNTRACK_MAX, dccp_states },
+	{ "--role", ATTR_DCCP_ROLE, CT_ATTR_TYPE_U8, __DCCP_CONNTRACK_ROLE_MAX, dccp_roles },
+	{},
+};
+
 #define DCCP_VALID_FLAGS_MAX	2
 static unsigned int dccp_valid_flags[DCCP_VALID_FLAGS_MAX] = {
 	CT_DCCP_ORIG_SPORT | CT_DCCP_ORIG_DPORT,
@@ -235,6 +251,7 @@ static struct ctproto_handler dccp = {
 	.protonum		= IPPROTO_DCCP,
 	.parse_opts		= parse_options,
 	.final_check		= final_check,
+	.print_opts		= dccp_print_opts,
 	.help			= help,
 	.opts			= opts,
 	.version		= VERSION,

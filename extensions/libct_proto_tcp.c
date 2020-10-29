@@ -177,6 +177,15 @@ static int parse_options(char c,
 	return 1;
 }
 
+static const struct ct_print_opts tcp_print_opts[] = {
+	{ "--sport", ATTR_ORIG_PORT_SRC, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--dport", ATTR_ORIG_PORT_DST, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--reply-port-src", ATTR_REPL_PORT_SRC, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--reply-port-dst", ATTR_REPL_PORT_DST, CT_ATTR_TYPE_BE16, 0, 0 },
+	{ "--state", ATTR_TCP_STATE, CT_ATTR_TYPE_U8, TCP_CONNTRACK_MAX, tcp_states },
+	{},
+};
+
 #define TCP_VALID_FLAGS_MAX   2
 static unsigned int tcp_valid_flags[TCP_VALID_FLAGS_MAX] = {
        CT_TCP_ORIG_SPORT | CT_TCP_ORIG_DPORT,
@@ -228,6 +237,7 @@ static struct ctproto_handler tcp = {
 	.protonum		= IPPROTO_TCP,
 	.parse_opts		= parse_options,
 	.final_check		= final_check,
+	.print_opts		= tcp_print_opts,
 	.help			= help,
 	.opts			= opts,
 	.version		= VERSION,
