@@ -1444,8 +1444,7 @@ split_address_and_port(const char *arg, char **address, char **port_str)
 	}
 }
 
-static void
-usage(char *prog)
+static void usage(const char *prog)
 {
 	fprintf(stdout, "Command line interface for the connection "
 			"tracking system. Version %s\n", VERSION);
@@ -3084,26 +3083,12 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 	ct_cmd->socketbuffersize = socketbuffersize;
 }
 
-int main(int argc, char *argv[])
+static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 {
-	struct ct_cmd _cmd = {}, *cmd = &_cmd;
+	struct nfct_filter_dump *filter_dump;
 	int res = 0;
 
-	register_tcp();
-	register_udp();
-	register_udplite();
-	register_sctp();
-	register_dccp();
-	register_icmp();
-	register_icmpv6();
-	register_gre();
-	register_unknown();
-
-	do_parse(cmd, argc, argv);
-
 	switch(cmd->command) {
-	struct nfct_filter_dump *filter_dump;
-
 	case CT_LIST:
 		if (cmd->type == CT_TABLE_DYING) {
 			if (nfct_mnl_socket_open(0) < 0)
@@ -3508,12 +3493,12 @@ try_proc:
 		printf("%s v%s (conntrack-tools)\n", PROGNAME, VERSION);
 		break;
 	case CT_HELP:
-		usage(argv[0]);
+		usage(progname);
 		if (options & CT_OPT_PROTO)
 			extension_help(h, cmd->protonum);
 		break;
 	default:
-		usage(argv[0]);
+		usage(progname);
 		break;
 	}
 
@@ -3534,4 +3519,23 @@ try_proc:
 	}
 
 	return EXIT_SUCCESS;
+}
+
+int main(int argc, char *argv[])
+{
+	struct ct_cmd _cmd = {}, *cmd = &_cmd;
+
+	register_tcp();
+	register_udp();
+	register_udplite();
+	register_sctp();
+	register_dccp();
+	register_icmp();
+	register_icmpv6();
+	register_gre();
+	register_unknown();
+
+	do_parse(cmd, argc, argv);
+
+	return do_command_ct(argv[0], cmd);
 }
