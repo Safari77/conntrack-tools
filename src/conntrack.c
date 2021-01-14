@@ -2762,30 +2762,25 @@ nfct_set_nat_details(const int opt, struct nf_conntrack *ct,
 
 }
 
-int main(int argc, char *argv[])
+struct ct_cmd {
+	unsigned int	command;
+	unsigned int	cmd;
+	unsigned int	type;
+	unsigned int	event_mask;
+	int		family;
+	int		protonum;
+	size_t		socketbuffersize;
+};
+
+static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 {
-	int c, cmd;
 	unsigned int type = 0, event_mask = 0, l4flags = 0, status = 0;
-	int res = 0, partial;
+	int protonum = 0, family = AF_UNSPEC;
 	size_t socketbuffersize = 0;
-	int family = AF_UNSPEC;
-	int protonum = 0;
-	union ct_address ad;
 	unsigned int command = 0;
-
-	/* we release these objects in the exit_error() path. */
-	if (!alloc_tmpl_objects())
-		exit_error(OTHER_PROBLEM, "out of memory");
-
-	register_tcp();
-	register_udp();
-	register_udplite();
-	register_sctp();
-	register_dccp();
-	register_icmp();
-	register_icmpv6();
-	register_gre();
-	register_unknown();
+	int res = 0, partial;
+	union ct_address ad;
+	int c, cmd;
 
 	/* disable explicit missing arguments error output from getopt_long */
 	opterr = 0;
@@ -3065,27 +3060,57 @@ int main(int argc, char *argv[])
 	if (!(command & CT_HELP) && h && h->final_check)
 		h->final_check(l4flags, cmd, tmpl.ct);
 
-	switch(command) {
+	ct_cmd->command = command;
+	ct_cmd->cmd = cmd;
+	ct_cmd->family = family;
+	ct_cmd->type = type;
+	ct_cmd->protonum = protonum;
+	ct_cmd->event_mask = event_mask;
+	ct_cmd->socketbuffersize = socketbuffersize;
+}
+
+int main(int argc, char *argv[])
+{
+	struct ct_cmd _cmd = {}, *cmd = &_cmd;
+	int res = 0;
+
+	/* we release these objects in the exit_error() path. */
+	if (!alloc_tmpl_objects())
+		exit_error(OTHER_PROBLEM, "out of memory");
+
+	register_tcp();
+	register_udp();
+	register_udplite();
+	register_sctp();
+	register_dccp();
+	register_icmp();
+	register_icmpv6();
+	register_gre();
+	register_unknown();
+
+	do_parse(cmd, argc, argv);
+
+	switch(cmd->command) {
 	struct nfct_filter_dump *filter_dump;
 
 	case CT_LIST:
-		if (type == CT_TABLE_DYING) {
+		if (cmd->type == CT_TABLE_DYING) {
 			if (nfct_mnl_socket_open(0) < 0)
 				exit_error(OTHER_PROBLEM, "Can't open handler");
 
 			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
 					    IPCTNL_MSG_CT_GET_DYING,
-					    mnl_nfct_dump_cb, family);
+					    mnl_nfct_dump_cb, cmd->family);
 
 			nfct_mnl_socket_close();
 			break;
-		} else if (type == CT_TABLE_UNCONFIRMED) {
+		} else if (cmd->type == CT_TABLE_UNCONFIRMED) {
 			if (nfct_mnl_socket_open(0) < 0)
 				exit_error(OTHER_PROBLEM, "Can't open handler");
 
 			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
 					    IPCTNL_MSG_CT_GET_UNCONFIRMED,
-					    mnl_nfct_dump_cb, family);
+					    mnl_nfct_dump_cb, cmd->family);
 
 			nfct_mnl_socket_close();
 			break;
@@ -3100,7 +3125,7 @@ int main(int argc, char *argv[])
 			exit_error(PARAMETER_PROBLEM, "Can't use -z with "
 						      "filtering parameters");
 
-		nfct_filter_init(family);
+		nfct_filter_init(cmd->family);
 
 		nfct_callback_register(cth, NFCT_T_ALL, dump_cb, tmpl.ct);
 
@@ -3115,7 +3140,7 @@ int main(int argc, char *argv[])
 		}
 		nfct_filter_dump_set_attr_u8(filter_dump,
 					     NFCT_FILTER_DUMP_L3NUM,
-					     family);
+					     cmd->family);
 
 		if (options & CT_OPT_ZERO)
 			res = nfct_query(cth, NFCT_Q_DUMP_FILTER_RESET,
@@ -3139,7 +3164,7 @@ int main(int argc, char *argv[])
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
 		nfexp_callback_register(cth, NFCT_T_ALL, dump_exp_cb, NULL);
-		res = nfexp_query(cth, NFCT_Q_DUMP, &family);
+		res = nfexp_query(cth, NFCT_Q_DUMP, &cmd->family);
 		nfct_close(cth);
 
 		if (dump_xml_header_done == 0) {
@@ -3191,22 +3216,22 @@ int main(int argc, char *argv[])
 		if (!cth || !ith)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
-		nfct_filter_init(family);
+		nfct_filter_init(cmd->family);
 
 		nfct_callback_register(cth, NFCT_T_ALL, update_cb, tmpl.ct);
 
-		res = nfct_query(cth, NFCT_Q_DUMP, &family);
+		res = nfct_query(cth, NFCT_Q_DUMP, &cmd->family);
 		nfct_close(ith);
 		nfct_close(cth);
 		break;
-		
+
 	case CT_DELETE:
 		cth = nfct_open(CONNTRACK, 0);
 		ith = nfct_open(CONNTRACK, 0);
 		if (!cth || !ith)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
-		nfct_filter_init(family);
+		nfct_filter_init(cmd->family);
 
 		nfct_callback_register(cth, NFCT_T_ALL, delete_cb, tmpl.ct);
 
@@ -3221,7 +3246,7 @@ int main(int argc, char *argv[])
 		}
 		nfct_filter_dump_set_attr_u8(filter_dump,
 					     NFCT_FILTER_DUMP_L3NUM,
-					     family);
+					     cmd->family);
 
 		res = nfct_query(cth, NFCT_Q_DUMP_FILTER, filter_dump);
 
@@ -3268,7 +3293,7 @@ int main(int argc, char *argv[])
 		cth = nfct_open(CONNTRACK, 0);
 		if (!cth)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
-		res = nfct_query(cth, NFCT_Q_FLUSH_FILTER, &family);
+		res = nfct_query(cth, NFCT_Q_FLUSH_FILTER, &cmd->family);
 		nfct_close(cth);
 		fprintf(stderr, "%s v%s (conntrack-tools): ",PROGNAME,VERSION);
 		fprintf(stderr,"connection tracking table has been emptied.\n");
@@ -3278,7 +3303,7 @@ int main(int argc, char *argv[])
 		cth = nfct_open(EXPECT, 0);
 		if (!cth)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
-		res = nfexp_query(cth, NFCT_Q_FLUSH, &family);
+		res = nfexp_query(cth, NFCT_Q_FLUSH, &cmd->family);
 		nfct_close(cth);
 		fprintf(stderr, "%s v%s (conntrack-tools): ",PROGNAME,VERSION);
 		fprintf(stderr,"expectation table has been emptied.\n");
@@ -3288,11 +3313,11 @@ int main(int argc, char *argv[])
 		if (options & CT_OPT_EVENT_MASK) {
 			unsigned int nl_events = 0;
 
-			if (event_mask & CT_EVENT_F_NEW)
+			if (cmd->event_mask & CT_EVENT_F_NEW)
 				nl_events |= NF_NETLINK_CONNTRACK_NEW;
-			if (event_mask & CT_EVENT_F_UPD)
+			if (cmd->event_mask & CT_EVENT_F_UPD)
 				nl_events |= NF_NETLINK_CONNTRACK_UPDATE;
-			if (event_mask & CT_EVENT_F_DEL)
+			if (cmd->event_mask & CT_EVENT_F_DEL)
 				nl_events |= NF_NETLINK_CONNTRACK_DESTROY;
 
 			res = nfct_mnl_socket_open(nl_events);
@@ -3306,6 +3331,8 @@ int main(int argc, char *argv[])
 			exit_error(OTHER_PROBLEM, "Can't open netlink socket");
 
 		if (options & CT_OPT_BUFFERSIZE) {
+			size_t socketbuffersize = cmd->socketbuffersize;
+
 			socklen_t socklen = sizeof(socketbuffersize);
 
 			res = setsockopt(mnl_socket_get_fd(sock.mnl),
@@ -3316,7 +3343,7 @@ int main(int argc, char *argv[])
 				setsockopt(mnl_socket_get_fd(sock.mnl),
 					   SOL_SOCKET, SO_RCVBUF,
 					   &socketbuffersize,
-					   socketbuffersize);
+					   sizeof(socketbuffersize));
 			}
 			getsockopt(mnl_socket_get_fd(sock.mnl), SOL_SOCKET,
 				   SO_RCVBUF, &socketbuffersize, &socklen);
@@ -3325,7 +3352,7 @@ int main(int argc, char *argv[])
 					socketbuffersize);
 		}
 
-		nfct_filter_init(family);
+		nfct_filter_init(cmd->family, &cmd->tmpl);
 
 		signal(SIGINT, event_sighandler);
 		signal(SIGTERM, event_sighandler);
@@ -3359,11 +3386,11 @@ int main(int argc, char *argv[])
 		if (options & CT_OPT_EVENT_MASK) {
 			unsigned int nl_events = 0;
 
-			if (event_mask & CT_EVENT_F_NEW)
+			if (cmd->event_mask & CT_EVENT_F_NEW)
 				nl_events |= NF_NETLINK_CONNTRACK_EXP_NEW;
-			if (event_mask & CT_EVENT_F_UPD)
+			if (cmd->event_mask & CT_EVENT_F_UPD)
 				nl_events |= NF_NETLINK_CONNTRACK_EXP_UPDATE;
-			if (event_mask & CT_EVENT_F_DEL)
+			if (cmd->event_mask & CT_EVENT_F_DEL)
 				nl_events |= NF_NETLINK_CONNTRACK_EXP_DESTROY;
 
 			cth = nfct_open(CONNTRACK, nl_events);
@@ -3423,7 +3450,7 @@ try_proc_count:
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
 		nfexp_callback_register(cth, NFCT_T_ALL, count_exp_cb, NULL);
-		res = nfexp_query(cth, NFCT_Q_DUMP, &family);
+		res = nfexp_query(cth, NFCT_Q_DUMP, &cmd->family);
 		nfct_close(cth);
 		printf("%d\n", counter);
 		break;
@@ -3472,7 +3499,7 @@ try_proc:
 	case CT_HELP:
 		usage(argv[0]);
 		if (options & CT_OPT_PROTO)
-			extension_help(h, protonum);
+			extension_help(h, cmd->protonum);
 		break;
 	default:
 		usage(argv[0]);
@@ -3481,17 +3508,17 @@ try_proc:
 
 	if (res < 0)
 		exit_error(OTHER_PROBLEM, "Operation failed: %s",
-			   err2str(errno, command));
+			   err2str(errno, cmd->command));
 
 	free_tmpl_objects();
 	free_options();
 	if (labelmap)
 		nfct_labelmap_destroy(labelmap);
 
-	if (command && exit_msg[cmd][0]) {
+	if (cmd->command && exit_msg[cmd->cmd][0]) {
 		fprintf(stderr, "%s v%s (conntrack-tools): ",PROGNAME,VERSION);
-		fprintf(stderr, exit_msg[cmd], counter);
-		if (counter == 0 && !(command & (CT_LIST | EXP_LIST)))
+		fprintf(stderr, exit_msg[cmd->cmd], counter);
+		if (counter == 0 && !(cmd->command & (CT_LIST | EXP_LIST)))
 			return EXIT_FAILURE;
 	}
 
