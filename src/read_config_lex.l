@@ -35,6 +35,10 @@ nl		[\n\r]
 
 is_on		[o|O][n|N]
 is_off		[o|O][f|F][f|F]
+is_yes		[y|Y][e|E][s|S]
+is_no		[n|N][o|O]
+is_true		{is_on}|{is_yes}
+is_false	{is_off}|{is_no}
 integer		[0-9]+
 signed_integer	[\-\+][0-9]+
 path		\/[^\"\n ]*
@@ -138,8 +142,8 @@ notrack		[N|n][O|o][T|t][R|r][A|a][C|c][K|k]
 "Systemd"			{ return T_SYSTEMD; }
 "StartupResync"			{ return T_STARTUP_RESYNC; }
 
-{is_on}			{ return T_ON; }
-{is_off}		{ return T_OFF; }
+{is_true}		{ return T_ON; }
+{is_false}		{ return T_OFF; }
 {integer}		{ yylval.val = atoi(yytext); return T_NUMBER; }
 {signed_integer}	{ yylval.val = atoi(yytext); return T_SIGNED_NUMBER; }
 {ip4}			{ yylval.string = strdup(yytext); return T_IP; }
