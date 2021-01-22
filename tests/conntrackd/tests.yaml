@@ -39,3 +39,14 @@
   # check that we can obtain stats via unix socket: expect (no output)
   test:
     - $CONNTRACKD -C /tmp/conntrackd_test_simple_stats -s expect
+
+- name: tcp_notrack_replicate_icmp
+  scenario: basic_2_peer_network_tcp_notrack
+  # check that we can replicate a ICMP conntrack entry in a 2 conntrackd TCP/NOTRACK setup
+  test:
+    # PING should inject an ICMP conntrack entry in nsr1
+    - ip netns exec ns1 ping -c1 10.0.1.2 >/dev/null
+    # verify conntrack entry is then replicated to nsr2, wait up to 5 seconds
+    - timeout 5 bash -c -- '
+      while ! ip netns exec nsr2 $CONNTRACK -L -p icmp 2>/dev/null | grep -q icmp
+      ; do sleep 0.5 ; done'
