@@ -1,0 +1,19 @@
+- name: simple_stats
+  start:
+    - rm -f /var/lock/conntrack.lock
+    - |
+      cat << EOF > /tmp/conntrackd_test_simple_stats
+      General {
+        HashSize 8192
+        LockFile /var/lock/conntrack.lock
+        UNIX { Path /var/run/conntrackd.ctl }
+      }
+      Stats {
+        LogFile on
+      }
+      EOF
+    - $CONNTRACKD -C /tmp/conntrackd_test_simple_stats -d
+  stop:
+    - $CONNTRACKD -C /tmp/conntrackd_test_simple_stats -k
+    - rm -f /var/lock/conntrack.lock
+    - rm -f /tmp/conntrackd_test_simple_stats
