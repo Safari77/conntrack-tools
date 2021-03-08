@@ -1780,5 +1780,11 @@ init_config(char *filename)
 					 NF_NETLINK_CONNTRACK_DESTROY;
 	}
 
+	/* default hashtable buckets and maximum number of entries */
+	if (!CONFIG(hashsize))
+		CONFIG(hashsize) = 65536;
+	if (!CONFIG(limit))
+		CONFIG(limit) = 262144;
+
 	return 0;
 }
