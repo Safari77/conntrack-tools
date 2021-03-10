@@ -1,3 +1,8 @@
+- name: empty
+  start:
+    - ":"
+  stop:
+    - ":"
 - name: simple_stats
   start:
     - rm -f /var/lock/conntrack.lock

@@ -50,3 +50,34 @@
     - timeout 5 bash -c -- '
       while ! ip netns exec nsr2 $CONNTRACK -L -p icmp 2>/dev/null | grep -q icmp
       ; do sleep 0.5 ; done'
+
+- name: hash_defaults_segfault
+  scenario: empty
+  test:
+    - rm -f /var/lock/conntrack.lock
+    - |
+      cat << EOF > /tmp/conntrackd_notrack_hash_defaults
+      Sync {
+        Mode NOTRACK { }
+        Multicast {
+          IPv4_address 225.0.0.50
+          Group 3780
+          IPv4_interface 127.0.0.1
+          Interface lo
+          SndSocketBuffer 1249280
+          RcvSocketBuffer 1249280
+          Checksum on
+        }
+      }
+      General {
+        LogFile on
+        Syslog on
+        LockFile /var/lock/conntrackd.lock
+        UNIX { Path /var/run/conntrackd.sock }
+        NetlinkBufferSize 2097152
+        NetlinkBufferSizeMaxGrowth 8388608
+      }
+      EOF
+    - $CONNTRACKD -C /tmp/conntrackd_notrack_hash_defaults -d
+    - $CONNTRACKD -C /tmp/conntrackd_notrack_hash_defaults -s | grep -q "cache"
+    - $CONNTRACKD -C /tmp/conntrackd_notrack_hash_defaults -k
