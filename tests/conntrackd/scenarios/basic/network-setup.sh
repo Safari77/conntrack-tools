@@ -25,7 +25,7 @@ start () {
 	ip -net nsr1 link set up dev veth0
 	ip -net nsr1 link set up dev veth1
 	ip -net nsr1 route add default via 192.168.10.2
-	ip netns exec nsr1 sysctl net.ipv4.ip_forward=1
+	ip netns exec nsr1 sysctl -q net.ipv4.ip_forward=1
 
 	ip -net nsr1 addr add 192.168.100.2/24 dev veth2
 	ip -net nsr1 link set up dev veth2
