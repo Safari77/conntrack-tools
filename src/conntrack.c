@@ -1490,20 +1490,21 @@ filter_label(const struct nf_conntrack *ct, const struct ct_tmpl *tmpl)
 	return 0;
 }
 
-static int
-filter_mark(const struct nf_conntrack *ct, const struct ct_tmpl *tmpl)
+static int filter_mark(const struct ct_cmd *cmd, const struct nf_conntrack *ct)
 {
+	const struct ct_tmpl *tmpl = &cmd->tmpl;
+
 	if ((options & CT_OPT_MARK) &&
 	     !mark_cmp(&tmpl->mark, ct))
 		return 1;
 	return 0;
 }
 
-static int 
-filter_nat(const struct nf_conntrack *obj, const struct nf_conntrack *ct)
+static int filter_nat(const struct ct_cmd *cmd, const struct nf_conntrack *ct)
 {
 	int check_srcnat = options & CT_OPT_SRC_NAT ? 1 : 0;
 	int check_dstnat = options & CT_OPT_DST_NAT ? 1 : 0;
+	struct nf_conntrack *obj = cmd->tmpl.ct;
 	int has_srcnat = 0, has_dstnat = 0;
 	uint32_t ip;
 	uint16_t port;
@@ -1625,7 +1626,7 @@ nfct_filter_network_direction(const struct nf_conntrack *ct, enum ct_direction d
 }
 
 static int
-filter_network(const struct nf_conntrack *ct)
+filter_network(const struct ct_cmd *cmd, const struct nf_conntrack *ct)
 {
 	if (options & CT_OPT_MASK_SRC) {
 		if (nfct_filter_network_direction(ct, DIR_SRC))
@@ -1645,10 +1646,10 @@ nfct_filter(struct ct_cmd *cmd, struct nf_conntrack *ct,
 {
 	struct nf_conntrack *obj = cmd->tmpl.ct;
 
-	if (filter_nat(obj, ct) ||
-	    filter_mark(ct, tmpl) ||
+	if (filter_nat(cmd, ct) ||
+	    filter_mark(cmd, ct) ||
 	    filter_label(ct, tmpl) ||
-	    filter_network(ct))
+	    filter_network(cmd, ct))
 		return 1;
 
 	if (options & CT_COMPARISON &&
@@ -2142,9 +2143,9 @@ static int update_cb(enum nf_conntrack_msg_type type,
 	struct nf_conntrack *obj = cmd->tmpl.ct, *tmp;
 	int res;
 
-	if (filter_nat(obj, ct) ||
+	if (filter_nat(cmd, ct) ||
 	    filter_label(ct, cur_tmpl) ||
-	    filter_network(ct))
+	    filter_network(cmd, ct))
 		return NFCT_CB_CONTINUE;
 
 	if (nfct_attr_is_set(obj, ATTR_ID) && nfct_attr_is_set(ct, ATTR_ID) &&
