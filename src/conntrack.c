@@ -2791,6 +2791,18 @@ nfct_set_nat_details(const int opt, struct nf_conntrack *ct,
 
 }
 
+static int print_stats(const struct ct_cmd *cmd)
+{
+	if (cmd->command && exit_msg[cmd->cmd][0]) {
+		fprintf(stderr, "%s v%s (conntrack-tools): ",PROGNAME,VERSION);
+		fprintf(stderr, exit_msg[cmd->cmd], counter);
+		if (counter == 0 && !(cmd->command & (CT_LIST | EXP_LIST)))
+			return -1;
+	}
+
+	return 0;
+}
+
 static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 {
 	unsigned int type = 0, event_mask = 0, l4flags = 0, status = 0;
@@ -3528,13 +3540,6 @@ try_proc:
 	if (labelmap)
 		nfct_labelmap_destroy(labelmap);
 
-	if (cmd->command && exit_msg[cmd->cmd][0]) {
-		fprintf(stderr, "%s v%s (conntrack-tools): ",PROGNAME,VERSION);
-		fprintf(stderr, exit_msg[cmd->cmd], counter);
-		if (counter == 0 && !(cmd->command & (CT_LIST | EXP_LIST)))
-			return EXIT_FAILURE;
-	}
-
 	return EXIT_SUCCESS;
 }
 
@@ -3553,6 +3558,10 @@ int main(int argc, char *argv[])
 	register_unknown();
 
 	do_parse(cmd, argc, argv);
+	do_command_ct(argv[0], cmd);
 
-	return do_command_ct(argv[0], cmd);
+	if (print_stats(cmd) < 0)
+		return EXIT_FAILURE;
+
+	return EXIT_SUCCESS;
 }
