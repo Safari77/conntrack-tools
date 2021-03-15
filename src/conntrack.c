@@ -2627,9 +2627,11 @@ nfct_network_attr_prepare(const int family, enum ct_direction dir,
 	nfct_attr_unset(tmpl->ct, attr);
 }
 
-static void
-nfct_filter_init(const int family, const struct ct_tmpl *tmpl)
+static void nfct_filter_init(const struct ct_cmd *cmd)
 {
+	const struct ct_tmpl *tmpl = &cmd->tmpl;
+	int family = cmd->family;
+
 	filter_family = family;
 	if (options & CT_OPT_MASK_SRC) {
 		assert(family != AF_UNSPEC);
@@ -3125,7 +3127,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 			exit_error(PARAMETER_PROBLEM, "Can't use -z with "
 						      "filtering parameters");
 
-		nfct_filter_init(cmd->family, &cmd->tmpl);
+		nfct_filter_init(cmd);
 
 		nfct_callback_register(cth, NFCT_T_ALL, dump_cb, cmd);
 
@@ -3216,7 +3218,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 		if (!cth || !ith)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
-		nfct_filter_init(cmd->family, &cmd->tmpl);
+		nfct_filter_init(cmd);
 
 		nfct_callback_register(cth, NFCT_T_ALL, update_cb, cmd);
 
@@ -3231,7 +3233,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 		if (!cth || !ith)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
-		nfct_filter_init(cmd->family, &cmd->tmpl);
+		nfct_filter_init(cmd);
 
 		nfct_callback_register(cth, NFCT_T_ALL, delete_cb, cmd);
 
@@ -3352,7 +3354,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 					socketbuffersize);
 		}
 
-		nfct_filter_init(cmd->family, &cmd->tmpl);
+		nfct_filter_init(cmd);
 
 		signal(SIGINT, event_sighandler);
 		signal(SIGTERM, event_sighandler);
