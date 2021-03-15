@@ -101,6 +101,17 @@ struct ct_tmpl {
 
 static struct ct_tmpl *cur_tmpl;
 
+struct ct_cmd {
+	unsigned int	command;
+	unsigned int	cmd;
+	unsigned int	type;
+	unsigned int	event_mask;
+	int		family;
+	int		protonum;
+	size_t		socketbuffersize;
+	struct ct_tmpl	tmpl;
+};
+
 static int alloc_tmpl_objects(struct ct_tmpl *tmpl)
 {
 	tmpl->ct = nfct_new();
@@ -1843,7 +1854,8 @@ static int event_cb(const struct nlmsghdr *nlh, void *data)
 {
 	struct nfgenmsg *nfh = mnl_nlmsg_get_payload(nlh);
 	unsigned int op_type = NFCT_O_DEFAULT;
-	struct nf_conntrack *obj = data;
+	struct ct_cmd *cmd = data;
+	struct nf_conntrack *obj = cmd->tmpl.ct;
 	enum nf_conntrack_msg_type type;
 	unsigned int op_flags = 0;
 	struct nf_conntrack *ct;
@@ -1929,10 +1941,11 @@ static int dump_cb(enum nf_conntrack_msg_type type,
 		   struct nf_conntrack *ct,
 		   void *data)
 {
-	char buf[1024];
-	struct nf_conntrack *obj = data;
+	struct ct_cmd *cmd = data;
+	struct nf_conntrack *obj = cmd->tmpl.ct;
 	unsigned int op_type = NFCT_O_DEFAULT;
 	unsigned int op_flags = 0;
+	char buf[1024];
 
 	if (nfct_filter(obj, ct, cur_tmpl))
 		return NFCT_CB_CONTINUE;
@@ -1970,11 +1983,12 @@ static int delete_cb(enum nf_conntrack_msg_type type,
 		     struct nf_conntrack *ct,
 		     void *data)
 {
-	int res;
-	char buf[1024];
-	struct nf_conntrack *obj = data;
+	struct ct_cmd *cmd = data;
+	struct nf_conntrack *obj = cmd->tmpl.ct;
 	unsigned int op_type = NFCT_O_DEFAULT;
 	unsigned int op_flags = 0;
+	char buf[1024];
+	int res;
 
 	if (nfct_filter(obj, ct, cur_tmpl))
 		return NFCT_CB_CONTINUE;
@@ -2125,8 +2139,9 @@ static int update_cb(enum nf_conntrack_msg_type type,
 		     struct nf_conntrack *ct,
 		     void *data)
 {
+	struct ct_cmd *cmd = data;
+	struct nf_conntrack *obj = cmd->tmpl.ct, *tmp;
 	int res;
-	struct nf_conntrack *obj = data, *tmp;
 
 	if (filter_nat(obj, ct) ||
 	    filter_label(ct, cur_tmpl) ||
@@ -2768,17 +2783,6 @@ nfct_set_nat_details(const int opt, struct nf_conntrack *ct,
 
 }
 
-struct ct_cmd {
-	unsigned int	command;
-	unsigned int	cmd;
-	unsigned int	type;
-	unsigned int	event_mask;
-	int		family;
-	int		protonum;
-	size_t		socketbuffersize;
-	struct ct_tmpl	tmpl;
-};
-
 static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 {
 	unsigned int type = 0, event_mask = 0, l4flags = 0, status = 0;
@@ -3123,7 +3127,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 
 		nfct_filter_init(cmd->family, &cmd->tmpl);
 
-		nfct_callback_register(cth, NFCT_T_ALL, dump_cb, cmd->tmpl.ct);
+		nfct_callback_register(cth, NFCT_T_ALL, dump_cb, cmd);
 
 		filter_dump = nfct_filter_dump_create();
 		if (filter_dump == NULL)
@@ -3214,7 +3218,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 
 		nfct_filter_init(cmd->family, &cmd->tmpl);
 
-		nfct_callback_register(cth, NFCT_T_ALL, update_cb, cmd->tmpl.ct);
+		nfct_callback_register(cth, NFCT_T_ALL, update_cb, cmd);
 
 		res = nfct_query(cth, NFCT_Q_DUMP, &cmd->family);
 		nfct_close(ith);
@@ -3229,7 +3233,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 
 		nfct_filter_init(cmd->family, &cmd->tmpl);
 
-		nfct_callback_register(cth, NFCT_T_ALL, delete_cb, cmd->tmpl.ct);
+		nfct_callback_register(cth, NFCT_T_ALL, delete_cb, cmd);
 
 		filter_dump = nfct_filter_dump_create();
 		if (filter_dump == NULL)
@@ -3268,7 +3272,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 		if (!cth)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
-		nfct_callback_register(cth, NFCT_T_ALL, dump_cb, cmd->tmpl.ct);
+		nfct_callback_register(cth, NFCT_T_ALL, dump_cb, cmd);
 		res = nfct_query(cth, NFCT_Q_GET, cmd->tmpl.ct);
 		nfct_close(cth);
 		break;
@@ -3373,7 +3377,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 					   strerror(errno));
 				break;
 			}
-			res = mnl_cb_run(buf, res, 0, 0, event_cb, cmd->tmpl.ct);
+			res = mnl_cb_run(buf, res, 0, 0, event_cb, cmd);
 		}
 		mnl_socket_close(sock.mnl);
 		break;
