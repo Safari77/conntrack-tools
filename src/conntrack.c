@@ -1640,9 +1640,11 @@ filter_network(const struct nf_conntrack *ct)
 }
 
 static int
-nfct_filter(struct nf_conntrack *obj, struct nf_conntrack *ct,
+nfct_filter(struct ct_cmd *cmd, struct nf_conntrack *ct,
 	    const struct ct_tmpl *tmpl)
 {
+	struct nf_conntrack *obj = cmd->tmpl.ct;
+
 	if (filter_nat(obj, ct) ||
 	    filter_mark(ct, tmpl) ||
 	    filter_label(ct, tmpl) ||
@@ -1854,9 +1856,8 @@ static int event_cb(const struct nlmsghdr *nlh, void *data)
 {
 	struct nfgenmsg *nfh = mnl_nlmsg_get_payload(nlh);
 	unsigned int op_type = NFCT_O_DEFAULT;
-	struct ct_cmd *cmd = data;
-	struct nf_conntrack *obj = cmd->tmpl.ct;
 	enum nf_conntrack_msg_type type;
+	struct ct_cmd *cmd = data;
 	unsigned int op_flags = 0;
 	struct nf_conntrack *ct;
 	char buf[1024];
@@ -1886,7 +1887,7 @@ static int event_cb(const struct nlmsghdr *nlh, void *data)
 
 	if ((filter_family != AF_UNSPEC &&
 	     filter_family != nfh->nfgen_family) ||
-	    nfct_filter(obj, ct, cur_tmpl))
+	    nfct_filter(cmd, ct, cur_tmpl))
 		goto out;
 
 	if (output_mask & _O_SAVE) {
@@ -1941,13 +1942,12 @@ static int dump_cb(enum nf_conntrack_msg_type type,
 		   struct nf_conntrack *ct,
 		   void *data)
 {
-	struct ct_cmd *cmd = data;
-	struct nf_conntrack *obj = cmd->tmpl.ct;
 	unsigned int op_type = NFCT_O_DEFAULT;
 	unsigned int op_flags = 0;
+	struct ct_cmd *cmd = data;
 	char buf[1024];
 
-	if (nfct_filter(obj, ct, cur_tmpl))
+	if (nfct_filter(cmd, ct, cur_tmpl))
 		return NFCT_CB_CONTINUE;
 
 	if (output_mask & _O_SAVE) {
@@ -1983,14 +1983,13 @@ static int delete_cb(enum nf_conntrack_msg_type type,
 		     struct nf_conntrack *ct,
 		     void *data)
 {
-	struct ct_cmd *cmd = data;
-	struct nf_conntrack *obj = cmd->tmpl.ct;
 	unsigned int op_type = NFCT_O_DEFAULT;
 	unsigned int op_flags = 0;
+	struct ct_cmd *cmd = data;
 	char buf[1024];
 	int res;
 
-	if (nfct_filter(obj, ct, cur_tmpl))
+	if (nfct_filter(cmd, ct, cur_tmpl))
 		return NFCT_CB_CONTINUE;
 
 	res = nfct_query(ith, NFCT_Q_DESTROY, ct);
