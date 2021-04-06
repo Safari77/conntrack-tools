@@ -102,6 +102,7 @@ struct ct_tmpl {
 static struct ct_tmpl *cur_tmpl;
 
 struct ct_cmd {
+	struct list_head list;
 	unsigned int	command;
 	unsigned int	cmd;
 	unsigned int	type;
@@ -2823,6 +2824,8 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 
 	/* disable explicit missing arguments error output from getopt_long */
 	opterr = 0;
+	/* reset optind, for the case do_parse is called multiple times */
+	optind = 0;
 
 	while ((c = getopt_long(argc, argv, getopt_str, opts, NULL)) != -1) {
 	switch(c) {
@@ -3544,9 +3547,199 @@ try_proc:
 	return EXIT_SUCCESS;
 }
 
+/* Taken from iptables/xshared.c:
+ * - add_argv()
+ * - add_param_to_argv()
+ * - free_argv()
+ */
+#define MAX_ARGC	255
+struct argv_store {
+	int argc;
+	char *argv[MAX_ARGC];
+	int argvattr[MAX_ARGC];
+};
+
+/* function adding one argument to store, updating argc
+ * returns if argument added, does not return otherwise */
+static void add_argv(struct argv_store *store, const char *what, int quoted)
+{
+	if (store->argc + 1 >= MAX_ARGC)
+		exit_error(PARAMETER_PROBLEM, "too many arguments");
+	if (!what)
+		exit_error(PARAMETER_PROBLEM, "invalid NULL argument");
+
+	store->argv[store->argc] = strdup(what);
+	store->argvattr[store->argc] = quoted;
+	store->argv[++store->argc] = NULL;
+}
+
+static void free_argv(struct argv_store *store)
+{
+	while (store->argc) {
+		store->argc--;
+		free(store->argv[store->argc]);
+		store->argvattr[store->argc] = 0;
+	}
+}
+
+struct ct_param_buf {
+	char	buffer[1024];
+	int 	len;
+};
+
+static void add_param(struct ct_param_buf *param, const char *curchar)
+{
+	param->buffer[param->len++] = *curchar;
+	if (param->len >= (int)sizeof(param->buffer))
+		exit_error(PARAMETER_PROBLEM, "Parameter too long!");
+}
+
+static void add_param_to_argv(struct argv_store *store, char *parsestart)
+{
+	int quote_open = 0, escaped = 0, quoted = 0;
+	struct ct_param_buf param = {};
+	char *curchar;
+
+	/* After fighting with strtok enough, here's now
+	 * a 'real' parser. According to Rusty I'm now no
+	 * longer a real hacker, but I can live with that */
+
+	for (curchar = parsestart; *curchar; curchar++) {
+		if (quote_open) {
+			if (escaped) {
+				add_param(&param, curchar);
+				escaped = 0;
+				continue;
+			} else if (*curchar == '\\') {
+				escaped = 1;
+				continue;
+			} else if (*curchar == '"') {
+				quote_open = 0;
+			} else {
+				add_param(&param, curchar);
+				continue;
+			}
+		} else {
+			if (*curchar == '"') {
+				quote_open = 1;
+				quoted = 1;
+				continue;
+			}
+		}
+
+		switch (*curchar) {
+		case '"':
+			break;
+		case ' ':
+		case '\t':
+		case '\n':
+			if (!param.len) {
+				/* two spaces? */
+				continue;
+			}
+			break;
+		default:
+			/* regular character, copy to buffer */
+			add_param(&param, curchar);
+			continue;
+		}
+
+		param.buffer[param.len] = '\0';
+		add_argv(store, param.buffer, quoted);
+		param.len = 0;
+		quoted = 0;
+	}
+	if (param.len) {
+		param.buffer[param.len] = '\0';
+		add_argv(store, param.buffer, 0);
+	}
+}
+
+static void ct_file_parse_line(struct list_head *cmd_list,
+			       const char *progname, char *buffer)
+{
+	struct argv_store store = {};
+	struct ct_cmd *ct_cmd;
+
+	/* skip prepended tabs and spaces */
+	for (; *buffer == ' ' || *buffer == '\t'; buffer++);
+
+	if (buffer[0] == '\n' ||
+	    buffer[0] == '#')
+		return;
+
+	add_argv(&store, progname, false);
+	add_param_to_argv(&store, buffer);
+
+	ct_cmd = calloc(1, sizeof(*ct_cmd));
+	if (!ct_cmd)
+		exit_error(OTHER_PROBLEM, "OOM");
+
+	do_parse(ct_cmd, store.argc, store.argv);
+	free_argv(&store);
+
+	list_add_tail(&ct_cmd->list, cmd_list);
+}
+
+static void ct_parse_file(struct list_head *cmd_list, const char *progname,
+			  const char *file_name)
+{
+	char buffer[10240] = {};
+	FILE *file;
+
+	if (!strcmp(file_name, "-"))
+		file_name = "/dev/stdin";
+
+	file = fopen(file_name, "r");
+	if (!file)
+		exit_error(PARAMETER_PROBLEM,
+			   "Failed to open file %s for reading", file_name);
+
+	while (fgets(buffer, sizeof(buffer), file))
+		ct_file_parse_line(cmd_list, progname, buffer);
+
+	fclose(file);
+}
+
+static struct {
+	uint32_t	command;
+	const char	*text;
+} ct_unsupp_cmd_parse_file[] = {
+	{ CT_LIST,	"-L"	},
+	{ CT_GET,	"-G"	},
+	{ CT_EVENT,	"-E"	},
+	{ CT_VERSION,	"-V"	},
+	{ CT_HELP,	"-h"	},
+	{ EXP_LIST,	"-L expect" },
+	{ EXP_CREATE,	"-C expect" },
+	{ EXP_DELETE,	"-D expect" },
+	{ EXP_GET,	"-G expect" },
+	{ EXP_FLUSH,	"-F expect" },
+	{ EXP_EVENT,	"-E expect" },
+	{ CT_COUNT,	"-C"	},
+	{ EXP_COUNT,	"-C expect" },
+	{ CT_STATS,	"-S"	},
+	{ EXP_STATS,	"-S expect" },
+	{ 0, NULL },
+};
+
+static const char *ct_unsupp_cmd_file(const struct ct_cmd *cmd)
+{
+	int i;
+
+	for (i = 0; ct_unsupp_cmd_parse_file[i].text; i++) {
+		if (cmd->command == ct_unsupp_cmd_parse_file[i].command)
+			return ct_unsupp_cmd_parse_file[i].text;
+	}
+
+	return "unknown";
+}
+
 int main(int argc, char *argv[])
 {
-	struct ct_cmd _cmd = {}, *cmd = &_cmd;
+	struct ct_cmd *cmd, *next;
+	LIST_HEAD(cmd_list);
+	int res = 0;
 
 	register_tcp();
 	register_udp();
@@ -3558,11 +3751,31 @@ int main(int argc, char *argv[])
 	register_gre();
 	register_unknown();
 
-	do_parse(cmd, argc, argv);
-	do_command_ct(argv[0], cmd);
+	if (argc > 2 &&
+	    (!strcmp(argv[1], "-R") || !strcmp(argv[1], "--load-file"))) {
+		ct_parse_file(&cmd_list, argv[0], argv[2]);
 
-	if (print_stats(cmd) < 0)
-		return EXIT_FAILURE;
+		list_for_each_entry(cmd, &cmd_list, list) {
+			if (!(cmd->command & (CT_CREATE | CT_UPDATE | CT_DELETE | CT_FLUSH)))
+				exit_error(PARAMETER_PROBLEM,
+					   "Cannot use command `%s' with --load-file",
+					   ct_unsupp_cmd_file(cmd));
+		}
+		list_for_each_entry_safe(cmd, next, &cmd_list, list) {
+			res |= do_command_ct(argv[0], cmd);
+			list_del(&cmd->list);
+			free(cmd);
+		}
+	} else {
+		cmd = calloc(1, sizeof(*cmd));
+		if (!cmd)
+			exit_error(OTHER_PROBLEM, "OOM");
 
-	return EXIT_SUCCESS;
+		do_parse(cmd, argc, argv);
+		do_command_ct(argv[0], cmd);
+		res = print_stats(cmd);
+		free(cmd);
+	}
+
+	return res < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
