@@ -23,6 +23,8 @@ conntrack \- command line interface for netfilter connection tracking
 .BR "conntrack -C [table]"
 .br
 .BR "conntrack -S "
+.br
+.BR "conntrack -R file"
 .SH DESCRIPTION
 The \fBconntrack\fP utilty provides a full featured userspace interface to the
 Netfilter connection tracking system that is intended to replace the old
@@ -102,6 +104,9 @@ Show the table counter.
 .TP
 .BI "-S, --stats "
 Show the in-kernel connection tracking system statistics.
+.TP
+.BI "-R, --load-file "
+Load entries from a given file. To read from stdin, "\-" should be specified.
 
 .SS PARAMETERS
 .TP
@@ -394,6 +399,9 @@ Delete all flow whose source address is 1.2.3.4
 .TP
 .B conntrack \-U \-s 1.2.3.4 \-m 1
 Set connmark to 1 of all the flows whose source address is 1.2.3.4
+.TP
+.B conntrack -L -w 11 -o save | sed "s/-w 11/-w 12/g" | conntrack --load-file -
+Copy all entries from ct zone 11 to ct zone 12
 
 .SH BUGS
 Please, report them to netfilter-devel@vger.kernel.org or file a bug in
