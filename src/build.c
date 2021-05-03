@@ -66,7 +66,14 @@ ct_build_u32(const struct nf_conntrack *ct, int a, struct nethdr *n, int b)
 }
 
 static inline void
-ct_build_u128(const struct nf_conntrack *ct, int a, struct nethdr *n, int b)
+ct_build_be32(const struct nf_conntrack *ct, int a, struct nethdr *n, int b)
+{
+	uint32_t data = nfct_get_attr_u32(ct, a);
+	addattr(n, b, &data, sizeof(uint32_t));
+}
+
+static inline void
+ct_build_be128(const struct nf_conntrack *ct, int a, struct nethdr *n, int b)
 {
 	const char *data = nfct_get_attr(ct, a);
 	addattr(n, b, data, sizeof(uint32_t) * 4);
@@ -279,18 +286,18 @@ void ct2msg(const struct nf_conntrack *ct, struct nethdr *n)
 	switch (nfct_get_attr_u8(ct, ATTR_ORIG_L3PROTO)) {
 	case AF_INET:
 		if (nfct_getobjopt(ct, NFCT_GOPT_IS_SNAT))
-			ct_build_u32(ct, ATTR_REPL_IPV4_DST, n, NTA_SNAT_IPV4);
+			ct_build_be32(ct, ATTR_REPL_IPV4_DST, n, NTA_SNAT_IPV4);
 		if (nfct_getobjopt(ct, NFCT_GOPT_IS_DNAT))
-			ct_build_u32(ct, ATTR_REPL_IPV4_SRC, n, NTA_DNAT_IPV4);
+			ct_build_be32(ct, ATTR_REPL_IPV4_SRC, n, NTA_DNAT_IPV4);
 		break;
 	case AF_INET6:
 		if (nfct_getobjopt(ct, NFCT_GOPT_IS_SNAT)) {
-			ct_build_u128(ct, ATTR_REPL_IPV6_DST, n,
-				      NTA_SNAT_IPV6);
+			ct_build_be128(ct, ATTR_REPL_IPV6_DST, n,
+				       NTA_SNAT_IPV6);
 		}
 		if (nfct_getobjopt(ct, NFCT_GOPT_IS_DNAT)) {
-			ct_build_u128(ct, ATTR_REPL_IPV6_SRC, n,
-				      NTA_DNAT_IPV6);
+			ct_build_be128(ct, ATTR_REPL_IPV6_SRC, n,
+				       NTA_DNAT_IPV6);
 		}
 		break;
 	default:
