@@ -3102,6 +3102,8 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 	if (!(command & CT_HELP) && h && h->final_check)
 		h->final_check(l4flags, cmd, tmpl->ct);
 
+	free_options();
+
 	ct_cmd->command = command;
 	ct_cmd->cmd = cmd;
 	ct_cmd->options = options;
@@ -3536,7 +3538,6 @@ try_proc:
 			   err2str(errno, cmd->command));
 
 	free_tmpl_objects(&cmd->tmpl);
-	free_options();
 	if (labelmap)
 		nfct_labelmap_destroy(labelmap);
 
