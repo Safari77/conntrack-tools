@@ -905,32 +905,13 @@ maintainance.</para></listitem>
 <para>The following steps describe how to enable the RPC portmapper helper for NFSv3 (this is similar for other helpers):</para>
 
 <orderedlist>
-<listitem><para>Register user-space helper:
-
-<programlisting>
-nfct add helper rpc inet udp
-nfct add helper rpc inet tcp
-</programlisting>
-
-This registers the portmapper helper for both UDP and TCP (NFSv3 traffic goes both over TCP and UDP).
-</para></listitem>
-
-<listitem><para>Add iptables rule using the CT target:
-
-<programlisting>
-# iptables -I OUTPUT -t raw -p udp --dport 111 -j CT --helper rpc
-# iptables -I OUTPUT -t raw -p tcp --dport 111 -j CT --helper rpc
-</programlisting>
-
-With this, packets matching port TCP/UDP/111 are passed to user-space for
-inspection. If there is no instance of conntrackd configured to support
-user-space helpers, no inspection happens and packets are not sent to
-user-space.</para></listitem>
 
 <listitem><para>Add configuration to conntrackd.conf:
 
 <programlisting>
 Helper {
+        Setup yes
+
         Type rpc inet udp {
                 QueueNum 1
 		QueueLen 10240
@@ -961,6 +942,25 @@ for inspection to user-space</para>
    </note>
 
 </listitem>
+
+<listitem><para>Run conntrackd:
+<programlisting>
+# conntrackd -d -C /path/to/conntrackd.conf
+</programlisting>
+</para>
+</listitem>
+
+<listitem><para>Add iptables rule using the CT target:
+
+<programlisting>
+# iptables -I OUTPUT -t raw -p udp --dport 111 -j CT --helper rpc
+# iptables -I OUTPUT -t raw -p tcp --dport 111 -j CT --helper rpc
+</programlisting>
+
+With this, packets matching port TCP/UDP/111 are passed to user-space for
+inspection. If there is no instance of conntrackd configured to support
+user-space helpers, no inspection happens and packets are not sent to
+user-space.</para></listitem>
 
 </orderedlist>
 
