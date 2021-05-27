@@ -141,6 +141,7 @@ notrack		[N|n][O|o][T|t][R|r][A|a][C|c][K|k]
 "ExpectTimeout"			{ return T_HELPER_EXPECT_TIMEOUT; }
 "Systemd"			{ return T_SYSTEMD; }
 "StartupResync"			{ return T_STARTUP_RESYNC; }
+"Setup"				{ return T_SETUP; }
 
 {is_true}		{ return T_ON; }
 {is_false}		{ return T_OFF; }

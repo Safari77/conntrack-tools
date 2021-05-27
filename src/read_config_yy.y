@@ -63,7 +63,7 @@ enum {
 
 %token T_IPV4_ADDR T_IPV4_IFACE T_PORT T_HASHSIZE T_HASHLIMIT T_MULTICAST
 %token T_PATH T_UNIX T_REFRESH T_IPV6_ADDR T_IPV6_IFACE
-%token T_BACKLOG T_GROUP T_IGNORE
+%token T_BACKLOG T_GROUP T_IGNORE T_SETUP
 %token T_LOG T_UDP T_ICMP T_IGMP T_VRRP T_TCP
 %token T_LOCK T_BUFFER_SIZE_MAX_GROWN T_EXPIRE T_TIMEOUT
 %token T_GENERAL T_SYNC T_STATS T_BUFFER_SIZE
@@ -1454,6 +1454,7 @@ helper_list:
 	    ;
 
 helper_line: helper_type
+	    | helper_setup
 	    ;
 
 helper_type: T_TYPE T_STRING T_STRING T_STRING '{' helper_type_list  '}'
@@ -1560,6 +1561,16 @@ helper_type: T_TYPE T_STRING T_STRING T_STRING '{' helper_type_list  '}'
 		}
 	}
 	list_add(&helper_inst->head, &CONFIG(cthelper).list);
+};
+
+helper_setup : T_SETUP T_ON
+{
+	CONFIG(cthelper).setup = true;
+};
+
+helper_setup : T_SETUP T_OFF
+{
+	CONFIG(cthelper).setup = false;
 };
 
 helper_type_list:
