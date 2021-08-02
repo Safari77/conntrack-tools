@@ -92,6 +92,10 @@ struct ct_tmpl {
 	struct nfct_filter_dump_mark filter_mark_kernel;
 	bool filter_mark_kernel_set;
 
+	/* Allow to filter by status from kernel-space. */
+	struct nfct_filter_dump_mark filter_status_kernel;
+	bool filter_status_kernel_set;
+
 	/* Allows filtering by ctlabels */
 	struct nfct_bitmask *label;
 
@@ -1146,7 +1150,7 @@ static struct parse_parameter {
 };
 
 static int
-do_parse_parameter(const char *str, size_t str_length, unsigned int *value, 
+do_parse_parameter(const char *str, size_t str_length, unsigned int *value,
 		   int parse_type)
 {
 	size_t i;
@@ -1171,7 +1175,7 @@ do_parse_parameter(const char *str, size_t str_length, unsigned int *value,
 			ret = 1;
 			break;
 		}
-	
+
 	return ret;
 }
 
@@ -1189,6 +1193,41 @@ parse_parameter(const char *arg, unsigned int *status, int parse_type)
 
 	if (strlen(arg) == 0
 	    || !do_parse_parameter(arg, strlen(arg), status, parse_type))
+		exit_error(PARAMETER_PROBLEM, "Bad parameter `%s'", arg);
+}
+
+static void
+parse_parameter_mask(const char *arg, unsigned int *status, unsigned int *mask, int parse_type)
+{
+	unsigned int *value;
+	const char *comma;
+	bool negated;
+
+	while ((comma = strchr(arg, ',')) != NULL) {
+		if (comma == arg)
+			exit_error(PARAMETER_PROBLEM,"Bad parameter `%s'", arg);
+
+		negated = *arg == '!';
+		if (negated)
+			arg++;
+		if (comma == arg)
+			exit_error(PARAMETER_PROBLEM,"Bad parameter `%s'", arg);
+
+		value = negated ? mask : status;
+
+		if (!do_parse_parameter(arg, comma-arg, value, parse_type))
+			exit_error(PARAMETER_PROBLEM,"Bad parameter `%s'", arg);
+		arg = comma+1;
+	}
+
+	negated = *arg == '!';
+	if (negated)
+		arg++;
+	value = negated ? mask : status;
+
+	if (strlen(arg) == 0
+	    || !do_parse_parameter(arg, strlen(arg),
+		    value, parse_type))
 		exit_error(PARAMETER_PROBLEM, "Bad parameter `%s'", arg);
 }
 
@@ -2914,8 +2953,16 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 			break;
 		case 'u':
 			options |= CT_OPT_STATUS;
-			parse_parameter(optarg, &status, PARSE_STATUS);
+			parse_parameter_mask(optarg, &status,
+					    &tmpl->filter_status_kernel.mask,
+					    PARSE_STATUS);
 			nfct_set_attr_u32(tmpl->ct, ATTR_STATUS, status);
+			if (tmpl->filter_status_kernel.mask == 0)
+				tmpl->filter_status_kernel.mask = status;
+
+			tmpl->mark.value = status;
+			tmpl->filter_status_kernel.val = tmpl->mark.value;
+			tmpl->filter_status_kernel_set = true;
 			break;
 		case 'e':
 			options |= CT_OPT_EVENT_MASK;
@@ -3171,7 +3218,11 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 		nfct_filter_dump_set_attr_u8(filter_dump,
 					     NFCT_FILTER_DUMP_L3NUM,
 					     cmd->family);
-
+		if (cmd->tmpl.filter_status_kernel_set) {
+			nfct_filter_dump_set_attr(filter_dump,
+						  NFCT_FILTER_DUMP_STATUS,
+						  &cmd->tmpl.filter_status_kernel);
+		}
 		if (cmd->options & CT_OPT_ZERO)
 			res = nfct_query(cth, NFCT_Q_DUMP_FILTER_RESET,
 					filter_dump);
