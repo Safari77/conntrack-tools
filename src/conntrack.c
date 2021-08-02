@@ -1199,6 +1199,7 @@ parse_parameter(const char *arg, unsigned int *status, int parse_type)
 static void
 parse_parameter_mask(const char *arg, unsigned int *status, unsigned int *mask, int parse_type)
 {
+	static const char unreplied[] = "UNREPLIED";
 	unsigned int *value;
 	const char *comma;
 	bool negated;
@@ -1215,6 +1216,12 @@ parse_parameter_mask(const char *arg, unsigned int *status, unsigned int *mask, 
 
 		value = negated ? mask : status;
 
+		if (!negated && strncmp(arg, unreplied, strlen(unreplied)) == 0) {
+			*mask |= IPS_SEEN_REPLY;
+			arg = comma+1;
+			continue;
+		}
+
 		if (!do_parse_parameter(arg, comma-arg, value, parse_type))
 			exit_error(PARAMETER_PROBLEM,"Bad parameter `%s'", arg);
 		arg = comma+1;
@@ -1224,6 +1231,11 @@ parse_parameter_mask(const char *arg, unsigned int *status, unsigned int *mask, 
 	if (negated)
 		arg++;
 	value = negated ? mask : status;
+
+	if (!negated && strncmp(arg, unreplied, strlen(unreplied)) == 0) {
+		*mask |= IPS_SEEN_REPLY;
+		return;
+	}
 
 	if (strlen(arg) == 0
 	    || !do_parse_parameter(arg, strlen(arg),
