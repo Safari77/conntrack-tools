@@ -2486,12 +2486,14 @@ nfct_mnl_get(uint16_t subsys, uint16_t type, mnl_cb_t cb, uint8_t family)
 	return mnl_cb_run(buf, res, nlh->nlmsg_seq, sock.portid, cb, NULL);
 }
 
+#define UNKNOWN_STATS_NUM 4
+
 static int nfct_stats_attr_cb(const struct nlattr *attr, void *data)
 {
 	const struct nlattr **tb = data;
 	int type = mnl_attr_get_type(attr);
 
-	if (mnl_attr_type_valid(attr, CTA_STATS_MAX) < 0)
+	if (mnl_attr_type_valid(attr, CTA_STATS_MAX + UNKNOWN_STATS_NUM) < 0)
 		return MNL_CB_OK;
 
 	if (mnl_attr_validate(attr, MNL_TYPE_U32) < 0) {
@@ -2502,8 +2504,6 @@ static int nfct_stats_attr_cb(const struct nlattr *attr, void *data)
 	tb[type] = attr;
 	return MNL_CB_OK;
 }
-
-#define UNKNOWN_STATS_NUM 4
 
 static int nfct_stats_cb(const struct nlmsghdr *nlh, void *data)
 {
@@ -2524,6 +2524,7 @@ static int nfct_stats_cb(const struct nlmsghdr *nlh, void *data)
 		[CTA_STATS_ERROR]	= "error",
 		[CTA_STATS_SEARCH_RESTART] = "search_restart",
 		[CTA_STATS_CLASH_RESOLVE] = "clash_resolve",
+		[CTA_STATS_CHAIN_TOOLONG] = "chaintoolong",
 
 		/* leave at end.  Allows to show counters supported
 		 * by newer kernel with older conntrack-tools release.
