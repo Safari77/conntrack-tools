@@ -75,36 +75,11 @@ AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$enable_systemd" = "xyes"])
 
 AC_CHECK_HEADERS([linux/capability.h],, [AC_MSG_ERROR([Cannot find linux/capabibility.h])])
 
-# Checks for libraries.
-# FIXME: Replace `main' with a function in `-lc':
-dnl AC_CHECK_LIB([c], [main])
-# FIXME: Replace `main' with a function in `-ldl':
-
 AC_CHECK_HEADERS(arpa/inet.h)
-dnl check for inet_pton
 AC_CHECK_FUNCS(inet_pton)
-
-# Checks for header files.
-dnl AC_HEADER_STDC
-dnl AC_CHECK_HEADERS([netinet/in.h stdlib.h])
-
-# Checks for typedefs, structures, and compiler characteristics.
-dnl AC_C_CONST
-dnl AC_C_INLINE
 
 # Let nfct use dlopen() on helper libraries without resolving all symbols.
 AX_CHECK_LINK_FLAG([-Wl,-z,lazy], [AC_SUBST([LAZY_LDFLAGS], [-Wl,-z,lazy])])
-
-# Checks for library functions.
-dnl AC_FUNC_MALLOC
-dnl AC_FUNC_VPRINTF
-dnl AC_CHECK_FUNCS([memset])
-
-dnl AC_CONFIG_FILES([Makefile
-dnl                  debug/Makefile
-dnl                  debug/src/Makefile
-dnl                  extensions/Makefile
-dnl                  src/Makefile])
 
 if test ! -z "$libdir"; then
 	MODULE_DIR="\\\"$libdir/conntrack-tools/\\\""
