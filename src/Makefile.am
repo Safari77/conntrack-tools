@@ -6,7 +6,7 @@ endif
 
 AM_YFLAGS = -d
 
-CLEANFILES = read_config_yy.c read_config_lex.c
+MAINTAINERCLEANFILES = read_config_yy.c read_config_yy.h read_config_lex.c
 
 sbin_PROGRAMS = conntrack conntrackd nfct
 
