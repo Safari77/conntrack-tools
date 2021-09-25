@@ -77,5 +77,3 @@ conntrackd_LDADD += ${LIBSYSTEMD_LIBS}
 endif
 
 conntrackd_LDFLAGS = -export-dynamic
-
-EXTRA_DIST = read_config_yy.h
