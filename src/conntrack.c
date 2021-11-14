@@ -2441,7 +2441,8 @@ static void nfct_mnl_socket_close(void)
 }
 
 static int
-nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb, uint8_t family)
+nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb, uint8_t family,
+	      const struct nfct_filter_dump *filter_dump)
 {
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	struct nlmsghdr *nlh;
@@ -3190,7 +3191,8 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 
 			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
 					    IPCTNL_MSG_CT_GET_DYING,
-					    mnl_nfct_dump_cb, cmd->family);
+					    mnl_nfct_dump_cb, cmd->family,
+					    NULL);
 
 			nfct_mnl_socket_close();
 			break;
@@ -3200,7 +3202,8 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 
 			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
 					    IPCTNL_MSG_CT_GET_UNCONFIRMED,
-					    mnl_nfct_dump_cb, cmd->family);
+					    mnl_nfct_dump_cb, cmd->family,
+					    NULL);
 
 			nfct_mnl_socket_close();
 			break;
@@ -3557,7 +3560,8 @@ try_proc_count:
 
 		res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
 				    IPCTNL_MSG_CT_GET_STATS_CPU,
-				    nfct_stats_cb, AF_UNSPEC);
+				    nfct_stats_cb, AF_UNSPEC,
+				    NULL);
 
 		nfct_mnl_socket_close();
 
@@ -3576,7 +3580,8 @@ try_proc_count:
 
 		res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK_EXP,
 				    IPCTNL_MSG_EXP_GET_STATS_CPU,
-				    nfexp_stats_cb, AF_UNSPEC);
+				    nfexp_stats_cb, AF_UNSPEC,
+				    NULL);
 
 		nfct_mnl_socket_close();
 
