@@ -2441,9 +2441,10 @@ static void nfct_mnl_socket_close(void)
 }
 
 static int
-nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb, uint8_t family,
-	      const struct nfct_filter_dump *filter_dump)
+nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb,
+	      struct ct_cmd *cmd, const struct nfct_filter_dump *filter_dump)
 {
+	uint8_t family = cmd ? cmd->family : AF_UNSPEC;
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	struct nlmsghdr *nlh;
 	int res;
@@ -2457,7 +2458,7 @@ nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb, uint8_t family,
 	res = mnl_socket_recvfrom(sock.mnl, buf, sizeof(buf));
 	while (res > 0) {
 		res = mnl_cb_run(buf, res, nlh->nlmsg_seq, sock.portid,
-					 cb, NULL);
+				 cb, cmd);
 		if (res <= MNL_CB_STOP)
 			break;
 
@@ -2626,6 +2627,9 @@ static int nfct_global_stats_cb(const struct nlmsghdr *nlh, void *data)
 
 static int mnl_nfct_dump_cb(const struct nlmsghdr *nlh, void *data)
 {
+	unsigned int op_type = NFCT_O_DEFAULT;
+	unsigned int op_flags = 0;
+	struct ct_cmd *cmd = data;
 	struct nf_conntrack *ct;
 	char buf[4096];
 
@@ -2635,7 +2639,34 @@ static int mnl_nfct_dump_cb(const struct nlmsghdr *nlh, void *data)
 
 	nfct_nlmsg_parse(nlh, ct);
 
-	nfct_snprintf(buf, sizeof(buf), ct, NFCT_T_UNKNOWN, NFCT_O_DEFAULT, 0);
+	if (nfct_filter(cmd, ct, cur_tmpl)) {
+		nfct_destroy(ct);
+		return MNL_CB_OK;
+	}
+
+	if (output_mask & _O_SAVE) {
+		ct_save_snprintf(buf, sizeof(buf), ct, labelmap, NFCT_T_NEW);
+		goto done;
+	}
+
+	if (output_mask & _O_XML) {
+		op_type = NFCT_O_XML;
+		if (dump_xml_header_done) {
+			dump_xml_header_done = 0;
+			printf("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+			       "<conntrack>\n");
+		}
+	}
+	if (output_mask & _O_EXT)
+		op_flags = NFCT_OF_SHOW_LAYER3;
+	if (output_mask & _O_KTMS)
+		op_flags |= NFCT_OF_TIMESTAMP;
+	if (output_mask & _O_ID)
+		op_flags |= NFCT_OF_ID;
+
+	nfct_snprintf_labels(buf, sizeof(buf), ct, NFCT_T_UNKNOWN, op_type,
+			     op_flags, labelmap);
+done:
 	printf("%s\n", buf);
 
 	nfct_destroy(ct);
@@ -3191,8 +3222,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 
 			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
 					    IPCTNL_MSG_CT_GET_DYING,
-					    mnl_nfct_dump_cb, cmd->family,
-					    NULL);
+					    mnl_nfct_dump_cb, cmd, NULL);
 
 			nfct_mnl_socket_close();
 			break;
@@ -3202,8 +3232,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 
 			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
 					    IPCTNL_MSG_CT_GET_UNCONFIRMED,
-					    mnl_nfct_dump_cb, cmd->family,
-					    NULL);
+					    mnl_nfct_dump_cb, cmd, NULL);
 
 			nfct_mnl_socket_close();
 			break;
@@ -3560,8 +3589,7 @@ try_proc_count:
 
 		res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
 				    IPCTNL_MSG_CT_GET_STATS_CPU,
-				    nfct_stats_cb, AF_UNSPEC,
-				    NULL);
+				    nfct_stats_cb, NULL, NULL);
 
 		nfct_mnl_socket_close();
 
@@ -3580,8 +3608,7 @@ try_proc_count:
 
 		res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK_EXP,
 				    IPCTNL_MSG_EXP_GET_STATS_CPU,
-				    nfexp_stats_cb, AF_UNSPEC,
-				    NULL);
+				    nfexp_stats_cb, NULL, NULL);
 
 		nfct_mnl_socket_close();
 
