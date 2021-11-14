@@ -2451,6 +2451,9 @@ nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb,
 
 	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type, family);
 
+	if (filter_dump)
+		nfct_nlmsg_build_filter(nlh, filter_dump);
+
 	res = mnl_socket_sendto(sock.mnl, nlh, nlh->nlmsg_len);
 	if (res < 0)
 		return res;
@@ -3216,31 +3219,22 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 
 	switch(cmd->command) {
 	case CT_LIST:
-		if (cmd->type == CT_TABLE_DYING) {
-			if (nfct_mnl_socket_open(0) < 0)
-				exit_error(OTHER_PROBLEM, "Can't open handler");
+		if (nfct_mnl_socket_open(0) < 0)
+			exit_error(OTHER_PROBLEM, "Can't open handler");
 
+		if (cmd->type == CT_TABLE_DYING) {
 			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
 					    IPCTNL_MSG_CT_GET_DYING,
 					    mnl_nfct_dump_cb, cmd, NULL);
-
 			nfct_mnl_socket_close();
 			break;
 		} else if (cmd->type == CT_TABLE_UNCONFIRMED) {
-			if (nfct_mnl_socket_open(0) < 0)
-				exit_error(OTHER_PROBLEM, "Can't open handler");
-
 			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
 					    IPCTNL_MSG_CT_GET_UNCONFIRMED,
 					    mnl_nfct_dump_cb, cmd, NULL);
-
 			nfct_mnl_socket_close();
 			break;
 		}
-
-		cth = nfct_open(CONNTRACK, 0);
-		if (!cth)
-			exit_error(OTHER_PROBLEM, "Can't open handler");
 
 		if (cmd->options & CT_COMPARISON &&
 		    cmd->options & CT_OPT_ZERO)
@@ -3248,8 +3242,6 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 						      "filtering parameters");
 
 		nfct_filter_init(cmd);
-
-		nfct_callback_register(cth, NFCT_T_ALL, dump_cb, cmd);
 
 		filter_dump = nfct_filter_dump_create();
 		if (filter_dump == NULL)
@@ -3268,11 +3260,15 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 						  NFCT_FILTER_DUMP_STATUS,
 						  &cmd->tmpl.filter_status_kernel);
 		}
-		if (cmd->options & CT_OPT_ZERO)
-			res = nfct_query(cth, NFCT_Q_DUMP_FILTER_RESET,
-					filter_dump);
-		else
-			res = nfct_query(cth, NFCT_Q_DUMP_FILTER, filter_dump);
+		if (cmd->options & CT_OPT_ZERO) {
+			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
+					    IPCTNL_MSG_CT_GET_CTRZERO,
+					    mnl_nfct_dump_cb, cmd, filter_dump);
+		} else {
+			res = nfct_mnl_dump(NFNL_SUBSYS_CTNETLINK,
+					    IPCTNL_MSG_CT_GET,
+					    mnl_nfct_dump_cb, cmd, filter_dump);
+		}
 
 		nfct_filter_dump_destroy(filter_dump);
 
@@ -3281,7 +3277,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 			fflush(stdout);
 		}
 
-		nfct_close(cth);
+		nfct_mnl_socket_close();
 		break;
 
 	case EXP_LIST:
