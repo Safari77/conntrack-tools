@@ -17,7 +17,7 @@ AM_PROG_AR
 LT_INIT([disable-static])
 AC_PROG_INSTALL
 AC_PROG_LN_S
-AM_PROG_LEX
+AC_PROG_LEX([noyywrap])
 AC_PROG_YACC
 
 case "$host" in
