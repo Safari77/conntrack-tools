@@ -26,13 +26,13 @@ case "$host" in
 esac
 
 dnl Dependencies
-if test -z "$ac_cv_prog_YACC"
+if test -z "$ac_cv_prog_YACC" -a ! -f "${srcdir}/src/read_config_yy.c"
 then
 	echo "*** Error: No suitable bison/yacc found. ***"
 	echo "    Please install the 'bison' package."
 	exit 1
 fi
-if test -z "$ac_cv_prog_LEX"
+if test -z "$ac_cv_prog_LEX" -a ! -f "${srcdir}/src/read_config_lex.c"
 then
 	echo "*** Error: No suitable flex/lex found. ***"
 	echo "    Please install the 'flex' package."
