@@ -7,7 +7,6 @@ endif
 AM_YFLAGS = -d
 
 BUILT_SOURCES = read_config_yy.h
-MAINTAINERCLEANFILES = read_config_yy.c read_config_yy.h read_config_lex.c
 
 sbin_PROGRAMS = conntrack conntrackd nfct
 
