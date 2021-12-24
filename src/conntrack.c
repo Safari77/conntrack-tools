@@ -2417,14 +2417,14 @@ static int nfct_mnl_socket_open(unsigned int events)
 
 static struct nlmsghdr *
 nfct_mnl_nlmsghdr_put(char *buf, uint16_t subsys, uint16_t type,
-		      uint8_t family)
+		      uint16_t flags, uint8_t family)
 {
 	struct nlmsghdr *nlh;
 	struct nfgenmsg *nfh;
 
 	nlh = mnl_nlmsg_put_header(buf);
 	nlh->nlmsg_type = (subsys << 8) | type;
-	nlh->nlmsg_flags = NLM_F_REQUEST|NLM_F_DUMP;
+	nlh->nlmsg_flags = NLM_F_REQUEST | flags;
 	nlh->nlmsg_seq = time(NULL);
 
 	nfh = mnl_nlmsg_put_extra_header(nlh, sizeof(struct nfgenmsg));
@@ -2470,7 +2470,7 @@ nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb,
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	struct nlmsghdr *nlh;
 
-	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type, family);
+	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type, NLM_F_DUMP, family);
 
 	if (filter_dump)
 		nfct_nlmsg_build_filter(nlh, filter_dump);
@@ -2500,7 +2500,7 @@ nfct_mnl_get(uint16_t subsys, uint16_t type, mnl_cb_t cb, uint8_t family)
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	struct nlmsghdr *nlh;
 
-	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type, family);
+	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type, 0, family);
 
 	return nfct_mnl_talk(nlh, cb);
 }
