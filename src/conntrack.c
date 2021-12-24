@@ -2440,19 +2440,10 @@ static void nfct_mnl_socket_close(void)
 	mnl_socket_close(sock.mnl);
 }
 
-static int
-nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb,
-	      struct ct_cmd *cmd, const struct nfct_filter_dump *filter_dump)
+static int nfct_mnl_recv(const struct nlmsghdr *nlh, mnl_cb_t cb, void *data)
 {
-	uint8_t family = cmd ? cmd->family : AF_UNSPEC;
 	char buf[MNL_SOCKET_BUFFER_SIZE];
-	struct nlmsghdr *nlh;
 	int res;
-
-	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type, family);
-
-	if (filter_dump)
-		nfct_nlmsg_build_filter(nlh, filter_dump);
 
 	res = mnl_socket_sendto(sock.mnl, nlh, nlh->nlmsg_len);
 	if (res < 0)
@@ -2461,7 +2452,7 @@ nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb,
 	res = mnl_socket_recvfrom(sock.mnl, buf, sizeof(buf));
 	while (res > 0) {
 		res = mnl_cb_run(buf, res, nlh->nlmsg_seq, sock.portid,
-				 cb, cmd);
+				 cb, data);
 		if (res <= MNL_CB_STOP)
 			break;
 
@@ -2472,23 +2463,46 @@ nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb,
 }
 
 static int
+nfct_mnl_dump(uint16_t subsys, uint16_t type, mnl_cb_t cb,
+	      struct ct_cmd *cmd, const struct nfct_filter_dump *filter_dump)
+{
+	uint8_t family = cmd ? cmd->family : AF_UNSPEC;
+	char buf[MNL_SOCKET_BUFFER_SIZE];
+	struct nlmsghdr *nlh;
+
+	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type, family);
+
+	if (filter_dump)
+		nfct_nlmsg_build_filter(nlh, filter_dump);
+
+	return nfct_mnl_recv(nlh, cb, cmd);
+}
+
+static int nfct_mnl_talk(const struct nlmsghdr *nlh, mnl_cb_t cb)
+{
+	char buf[MNL_SOCKET_BUFFER_SIZE];
+	int ret;
+
+	ret = mnl_socket_sendto(sock.mnl, nlh, nlh->nlmsg_len);
+	if (ret < 0)
+		return ret;
+
+	ret = mnl_socket_recvfrom(sock.mnl, buf, sizeof(buf));
+	if (ret < 0)
+		return ret;
+
+	return mnl_cb_run(buf, ret, nlh->nlmsg_seq, sock.portid, cb, NULL);
+}
+
+static int
 nfct_mnl_get(uint16_t subsys, uint16_t type, mnl_cb_t cb, uint8_t family)
 {
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	struct nlmsghdr *nlh;
-	int res;
 
 	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type, family);
 
-	res = mnl_socket_sendto(sock.mnl, nlh, nlh->nlmsg_len);
-	if (res < 0)
-		return res;
-
-	res = mnl_socket_recvfrom(sock.mnl, buf, sizeof(buf));
-	if (res < 0)
-		return res;
-
-	return mnl_cb_run(buf, res, nlh->nlmsg_seq, sock.portid, cb, NULL);
+	return nfct_mnl_talk(nlh, cb);
 }
 
 #define UNKNOWN_STATS_NUM 4
