@@ -121,7 +121,7 @@ logfile_path : T_LOG T_PATH_VAL
 		     FILENAME_MAXLEN);
 		exit(EXIT_FAILURE);
 	}
-	snprintf(conf.logfile, FILENAME_MAXLEN, "%s", $2);
+	snprintf(conf.logfile, sizeof(conf.logfile), "%s", $2);
 	free($2);
 };
 
@@ -176,7 +176,7 @@ lock : T_LOCK T_PATH_VAL
 		     FILENAME_MAXLEN);
 		exit(EXIT_FAILURE);
 	}
-	snprintf(conf.lockfile, FILENAME_MAXLEN, "%s", $2);
+	snprintf(conf.lockfile, sizeof(conf.lockfile), "%s", $2);
 	free($2);
 };
 
@@ -704,7 +704,7 @@ unix_option : T_PATH T_PATH_VAL
 		     UNIX_PATH_MAX);
 		exit(EXIT_FAILURE);
 	}
-	snprintf(conf.local.path, UNIX_PATH_MAX, "%s", $2);
+	snprintf(conf.local.path, sizeof(conf.local.path), "%s", $2);
 	free($2);
 };
 
@@ -1396,7 +1396,7 @@ stat_logfile_path : T_LOG T_PATH_VAL
 		     FILENAME_MAXLEN);
 		exit(EXIT_FAILURE);
 	}
-	snprintf(conf.stats.logfile, FILENAME_MAXLEN, "%s", $2);
+	snprintf(conf.stats.logfile, sizeof(conf.stats.logfile), "%s", $2);
 	free($2);
 };
 
@@ -1622,7 +1622,7 @@ helper_type: T_HELPER_POLICY T_STRING '{' helper_policy_list '}'
 	}
 
 	policy = (struct ctd_helper_policy *) &e->data;
-	snprintf(policy->name, CTD_HELPER_NAME_LEN, "%s", $2);
+	snprintf(policy->name, sizeof(policy->name), "%s", $2);
 	free($2);
 	/* Now object is complete. */
 	e->type = SYMBOL_HELPER_POLICY_EXPECT_ROOT;
