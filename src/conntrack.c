@@ -2441,8 +2441,8 @@ static void nfct_mnl_socket_close(const struct nfct_mnl_socket *sock)
 	mnl_socket_close(sock->mnl);
 }
 
-static int nfct_mnl_recv(struct nfct_mnl_socket *sock,
-			 const struct nlmsghdr *nlh, mnl_cb_t cb, void *data)
+static int __nfct_mnl_dump(struct nfct_mnl_socket *sock,
+			   const struct nlmsghdr *nlh, mnl_cb_t cb, void *data)
 {
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	int res;
@@ -2478,7 +2478,7 @@ nfct_mnl_dump(struct nfct_mnl_socket *sock, uint16_t subsys, uint16_t type,
 	if (filter_dump)
 		nfct_nlmsg_build_filter(nlh, filter_dump);
 
-	return nfct_mnl_recv(sock, nlh, cb, cmd);
+	return __nfct_mnl_dump(sock, nlh, cb, cmd);
 }
 
 static int nfct_mnl_talk(struct nfct_mnl_socket *sock,
