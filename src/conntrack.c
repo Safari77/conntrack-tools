@@ -2498,35 +2498,23 @@ static int nfct_mnl_talk(struct nfct_mnl_socket *sock,
 	return mnl_cb_run(buf, ret, nlh->nlmsg_seq, sock->portid, cb, NULL);
 }
 
-static int
-nfct_mnl_get(struct nfct_mnl_socket *sock, uint16_t subsys, uint16_t type,
-	     mnl_cb_t cb, uint8_t family)
-{
-	char buf[MNL_SOCKET_BUFFER_SIZE];
-	struct nlmsghdr *nlh;
-
-	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type, 0, family);
-
-	return nfct_mnl_talk(sock, nlh, cb);
-}
-
-static int
-nfct_mnl_create(struct nfct_mnl_socket *sock, uint16_t subsys, uint16_t type,
-		const struct nf_conntrack *ct)
+static int nfct_mnl_request(struct nfct_mnl_socket *sock, uint16_t subsys,
+			    int family, uint16_t type, uint16_t flags,
+			    mnl_cb_t cb, const struct nf_conntrack *ct)
 {
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	struct nlmsghdr *nlh;
 	int err;
 
-	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type,
-				    NLM_F_CREATE | NLM_F_ACK | NLM_F_EXCL,
-				    nfct_get_attr_u8(ct, ATTR_ORIG_L3PROTO));
+	nlh = nfct_mnl_nlmsghdr_put(buf, subsys, type, flags, family);
 
-	err = nfct_nlmsg_build(nlh, ct);
-	if (err < 0)
-		return err;
+	if (ct) {
+		err = nfct_nlmsg_build(nlh, ct);
+		if (err < 0)
+			return err;
+	}
 
-	return nfct_mnl_talk(sock, nlh, NULL);
+	return nfct_mnl_talk(sock, nlh, cb);
 }
 
 #define UNKNOWN_STATS_NUM 4
@@ -3351,8 +3339,10 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 		if (res < 0)
 			exit_error(OTHER_PROBLEM, "Can't open netlink socket");
 
-		res = nfct_mnl_create(sock, NFNL_SUBSYS_CTNETLINK,
-				      IPCTNL_MSG_CT_NEW, cmd->tmpl.ct);
+		res = nfct_mnl_request(sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
+				       IPCTNL_MSG_CT_NEW,
+				       NLM_F_CREATE | NLM_F_ACK | NLM_F_EXCL,
+				       NULL, cmd->tmpl.ct);
 		if (res >= 0)
 			counter++;
 
@@ -3580,10 +3570,9 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 		if (nfct_mnl_socket_open(sock, 0) < 0)
 			goto try_proc_count;
 
-		res = nfct_mnl_get(sock,
-				   NFNL_SUBSYS_CTNETLINK,
-				   IPCTNL_MSG_CT_GET_STATS,
-				   nfct_global_stats_cb, AF_UNSPEC);
+		res = nfct_mnl_request(sock, NFNL_SUBSYS_CTNETLINK, AF_UNSPEC,
+				       IPCTNL_MSG_CT_GET_STATS, 0,
+				       nfct_global_stats_cb, NULL);
 
 		nfct_mnl_socket_close(sock);
 
