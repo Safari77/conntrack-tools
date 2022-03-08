@@ -608,7 +608,7 @@ static const char usage_parameters[] =
 
 #define OPTION_OFFSET 256
 
-static struct nfct_handle *cth, *ith;
+static struct nfct_handle *cth;
 static struct option *opts = original_opts;
 static unsigned int global_option_offset = 0;
 
@@ -2036,20 +2036,32 @@ done:
 	return NFCT_CB_CONTINUE;
 }
 
-static int delete_cb(enum nf_conntrack_msg_type type,
-		     struct nf_conntrack *ct,
-		     void *data)
+static int nfct_mnl_request(struct nfct_mnl_socket *sock, uint16_t subsys,
+			    int family, uint16_t type, uint16_t flags,
+			    mnl_cb_t cb, const struct nf_conntrack *ct);
+
+static int mnl_nfct_delete_cb(const struct nlmsghdr *nlh, void *data)
 {
+	struct nfct_mnl_socket *modifier_sock = &_modifier_sock;
 	unsigned int op_type = NFCT_O_DEFAULT;
 	unsigned int op_flags = 0;
 	struct ct_cmd *cmd = data;
+	struct nf_conntrack *ct;
 	char buf[1024];
 	int res;
 
-	if (nfct_filter(cmd, ct, cur_tmpl))
-		return NFCT_CB_CONTINUE;
+	ct = nfct_new();
+	if (ct == NULL)
+		return MNL_CB_OK;
 
-	res = nfct_query(ith, NFCT_Q_DESTROY, ct);
+	nfct_nlmsg_parse(nlh, ct);
+
+	if (nfct_filter(cmd, ct, cur_tmpl))
+		goto destroy_ok;
+
+	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK,
+			       nfct_get_attr_u8(ct, ATTR_ORIG_L3PROTO),
+			       IPCTNL_MSG_CT_DELETE, NLM_F_ACK, NULL, ct);
 	if (res < 0)
 		exit_error(OTHER_PROBLEM,
 			   "Operation failed: %s",
@@ -2073,7 +2085,9 @@ done:
 
 	counter++;
 
-	return NFCT_CB_CONTINUE;
+destroy_ok:
+	nfct_destroy(ct);
+	return MNL_CB_OK;
 }
 
 static int mnl_nfct_print_cb(const struct nlmsghdr *nlh, void *data)
@@ -2199,10 +2213,6 @@ static void copy_label(const struct ct_cmd *cmd, struct nf_conntrack *tmp,
 		nfct_set_attr(tmp, ATTR_CONNLABELS_MASK, newmask);
 	}
 }
-
-static int nfct_mnl_request(struct nfct_mnl_socket *sock, uint16_t subsys,
-			    int family, uint16_t type, uint16_t flags,
-			    mnl_cb_t cb, const struct nf_conntrack *ct);
 
 static int mnl_nfct_update_cb(const struct nlmsghdr *nlh, void *data)
 {
@@ -3397,14 +3407,11 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 		break;
 
 	case CT_DELETE:
-		cth = nfct_open(CONNTRACK, 0);
-		ith = nfct_open(CONNTRACK, 0);
-		if (!cth || !ith)
+		if (nfct_mnl_socket_open(sock, 0) < 0 ||
+		    nfct_mnl_socket_open(modifier_sock, 0) < 0)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
 		nfct_filter_init(cmd);
-
-		nfct_callback_register(cth, NFCT_T_ALL, delete_cb, cmd);
 
 		filter_dump = nfct_filter_dump_create();
 		if (filter_dump == NULL)
@@ -3419,12 +3426,14 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 					     NFCT_FILTER_DUMP_L3NUM,
 					     cmd->family);
 
-		res = nfct_query(cth, NFCT_Q_DUMP_FILTER, filter_dump);
+		res = nfct_mnl_dump(sock, NFNL_SUBSYS_CTNETLINK,
+				    IPCTNL_MSG_CT_GET, mnl_nfct_delete_cb,
+				    cmd, filter_dump);
 
 		nfct_filter_dump_destroy(filter_dump);
 
-		nfct_close(ith);
-		nfct_close(cth);
+		nfct_mnl_socket_close(modifier_sock);
+		nfct_mnl_socket_close(sock);
 		break;
 
 	case EXP_DELETE:
