@@ -77,15 +77,12 @@ AC_CHECK_HEADERS([linux/capability.h],, [AC_MSG_ERROR([Cannot find linux/capabib
 AC_CHECK_HEADERS(arpa/inet.h)
 AC_CHECK_FUNCS(inet_pton)
 
-# Let nfct use dlopen() on helper libraries without resolving all symbols.
-AX_CHECK_LINK_FLAG([-Wl,-z,lazy], [AC_SUBST([LAZY_LDFLAGS], [-Wl,-z,lazy])])
-
 if test ! -z "$libdir"; then
 	MODULE_DIR="\\\"$libdir/conntrack-tools/\\\""
 	CFLAGS="$CFLAGS -DCONNTRACKD_LIB_DIR=$MODULE_DIR"
 fi
 
-AC_CONFIG_FILES([Makefile src/Makefile include/Makefile include/linux/Makefile include/linux/netfilter/Makefile extensions/Makefile src/helpers/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile include/Makefile include/helpers/Makefile include/linux/Makefile include/linux/netfilter/Makefile extensions/Makefile src/helpers/Makefile])
 AC_OUTPUT
 
 echo "

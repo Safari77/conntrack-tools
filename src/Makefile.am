@@ -35,8 +35,6 @@ if HAVE_CTHELPER
 nfct_LDADD += ${LIBNETFILTER_CTHELPER_LIBS}
 endif
 
-nfct_LDFLAGS = -export-dynamic ${LAZY_LDFLAGS}
-
 conntrackd_SOURCES = alarm.c main.c run.c hash.c queue.c queue_tx.c rbtree.c \
 		    local.c log.c mcast.c udp.c netlink.c vector.c \
 		    filter.c fds.c event.c process.c origin.c date.c \

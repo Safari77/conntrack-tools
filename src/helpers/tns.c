@@ -29,6 +29,8 @@
 #include <libnetfilter_queue/pktbuff.h>
 #include <linux/netfilter.h>
 
+#include "helpers/tns.h"
+
 /* TNS SQL*Net Version 2 */
 enum tns_types {
        TNS_TYPE_CONNECT        = 1,
@@ -56,11 +58,6 @@ struct tns_header {
 
 struct tns_redirect {
        uint16_t data_len;
-};
-
-struct tns_info {
-       /* Scan next DATA|REDIRECT packet */
-       bool parse;
 };
 
 static int try_number(const char *data, size_t dlen, uint32_t array[],
