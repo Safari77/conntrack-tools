@@ -68,10 +68,13 @@
 #include <linux/netfilter/nf_conntrack_common.h>
 #include <libnetfilter_conntrack/libnetfilter_conntrack.h>
 
-static struct nfct_mnl_socket {
+struct nfct_mnl_socket {
 	struct mnl_socket	*mnl;
 	uint32_t		portid;
-} _sock;
+};
+
+static struct nfct_mnl_socket _sock;
+static struct nfct_mnl_socket _modifier_sock;
 
 struct u32_mask {
 	uint32_t value;
@@ -2073,13 +2076,18 @@ done:
 	return NFCT_CB_CONTINUE;
 }
 
-static int print_cb(enum nf_conntrack_msg_type type,
-		    struct nf_conntrack *ct,
-		    void *data)
+static int mnl_nfct_print_cb(const struct nlmsghdr *nlh, void *data)
 {
-	char buf[1024];
 	unsigned int op_type = NFCT_O_DEFAULT;
 	unsigned int op_flags = 0;
+	struct nf_conntrack *ct;
+	char buf[1024];
+
+	ct = nfct_new();
+	if (ct == NULL)
+		return MNL_CB_OK;
+
+	nfct_nlmsg_parse(nlh, ct);
 
 	if (output_mask & _O_SAVE) {
 		ct_save_snprintf(buf, sizeof(buf), ct, labelmap, NFCT_T_NEW);
@@ -2097,7 +2105,9 @@ static int print_cb(enum nf_conntrack_msg_type type,
 done:
 	printf("%s\n", buf);
 
-	return NFCT_CB_CONTINUE;
+	nfct_destroy(ct);
+
+	return MNL_CB_OK;
 }
 
 static void copy_mark(const struct ct_cmd *cmd, struct nf_conntrack *tmp,
@@ -2190,29 +2200,38 @@ static void copy_label(const struct ct_cmd *cmd, struct nf_conntrack *tmp,
 	}
 }
 
-static int update_cb(enum nf_conntrack_msg_type type,
-		     struct nf_conntrack *ct,
-		     void *data)
+static int nfct_mnl_request(struct nfct_mnl_socket *sock, uint16_t subsys,
+			    int family, uint16_t type, uint16_t flags,
+			    mnl_cb_t cb, const struct nf_conntrack *ct);
+
+static int mnl_nfct_update_cb(const struct nlmsghdr *nlh, void *data)
 {
 	struct ct_cmd *cmd = data;
-	struct nf_conntrack *obj = cmd->tmpl.ct, *tmp;
+	struct nfct_mnl_socket *modifier_sock = &_modifier_sock;
+	struct nf_conntrack *ct, *obj = cmd->tmpl.ct, *tmp = NULL;
 	int res;
+
+	ct = nfct_new();
+	if (ct == NULL)
+		return MNL_CB_OK;
+
+	nfct_nlmsg_parse(nlh, ct);
 
 	if (filter_nat(cmd, ct) ||
 	    filter_label(ct, cur_tmpl) ||
 	    filter_network(cmd, ct))
-		return NFCT_CB_CONTINUE;
+		goto destroy_ok;
 
 	if (nfct_attr_is_set(obj, ATTR_ID) && nfct_attr_is_set(ct, ATTR_ID) &&
 	    nfct_get_attr_u32(obj, ATTR_ID) != nfct_get_attr_u32(ct, ATTR_ID))
-	    	return NFCT_CB_CONTINUE;
+		goto destroy_ok;
 
 	if (cmd->options & CT_OPT_TUPLE_ORIG &&
 	    !nfct_cmp(obj, ct, NFCT_CMP_ORIG))
-		return NFCT_CB_CONTINUE;
+		goto destroy_ok;
 	if (cmd->options & CT_OPT_TUPLE_REPL &&
 	    !nfct_cmp(obj, ct, NFCT_CMP_REPL))
-		return NFCT_CB_CONTINUE;
+		goto destroy_ok;
 
 	tmp = nfct_new();
 	if (tmp == NULL)
@@ -2225,36 +2244,36 @@ static int update_cb(enum nf_conntrack_msg_type type,
 	copy_label(cmd, tmp, ct, cur_tmpl);
 
 	/* do not send NFCT_Q_UPDATE if ct appears unchanged */
-	if (nfct_cmp(tmp, ct, NFCT_CMP_ALL | NFCT_CMP_MASK)) {
-		nfct_destroy(tmp);
-		return NFCT_CB_CONTINUE;
+	if (nfct_cmp(tmp, ct, NFCT_CMP_ALL | NFCT_CMP_MASK))
+		goto destroy_ok;
+
+	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
+			       IPCTNL_MSG_CT_NEW, NLM_F_ACK, NULL, tmp);
+	if (res < 0) {
+		fprintf(stderr, "Operation failed: %s\n",
+			err2str(errno, CT_UPDATE));
 	}
 
-	res = nfct_query(ith, NFCT_Q_UPDATE, tmp);
-	if (res < 0)
-		fprintf(stderr,
-			   "Operation failed: %s\n",
-			   err2str(errno, CT_UPDATE));
-	nfct_callback_register(ith, NFCT_T_ALL, print_cb, NULL);
-
-	res = nfct_query(ith, NFCT_Q_GET, tmp);
+	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
+			       IPCTNL_MSG_CT_GET, NLM_F_ACK,
+			       mnl_nfct_print_cb, tmp);
 	if (res < 0) {
-		nfct_destroy(tmp);
 		/* the entry has vanish in middle of the update */
-		if (errno == ENOENT) {
-			nfct_callback_unregister(ith);
-			return NFCT_CB_CONTINUE;
-		}
+		if (errno == ENOENT)
+			goto destroy_ok;
 		exit_error(OTHER_PROBLEM,
 			   "Operation failed: %s",
 			   err2str(errno, CT_UPDATE));
 	}
-	nfct_destroy(tmp);
-	nfct_callback_unregister(ith);
 
 	counter++;
 
-	return NFCT_CB_CONTINUE;
+destroy_ok:
+	if (tmp)
+		nfct_destroy(tmp);
+	nfct_destroy(ct);
+
+	return MNL_CB_OK;
 }
 
 static int dump_exp_cb(enum nf_conntrack_msg_type type,
@@ -3240,6 +3259,7 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 
 static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 {
+	struct nfct_mnl_socket *modifier_sock = &_modifier_sock;
 	struct nfct_mnl_socket *sock = &_sock;
 	struct nfct_filter_dump *filter_dump;
 	int res = 0;
@@ -3363,19 +3383,17 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd)
 		break;
 
 	case CT_UPDATE:
-		cth = nfct_open(CONNTRACK, 0);
-		/* internal handler for delete_cb, otherwise we hit EILSEQ */
-		ith = nfct_open(CONNTRACK, 0);
-		if (!cth || !ith)
+		if (nfct_mnl_socket_open(sock, 0) < 0 ||
+		    nfct_mnl_socket_open(modifier_sock, 0) < 0)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
 		nfct_filter_init(cmd);
+		res = nfct_mnl_dump(sock, NFNL_SUBSYS_CTNETLINK,
+				    IPCTNL_MSG_CT_GET, mnl_nfct_update_cb,
+				    cmd, NULL);
 
-		nfct_callback_register(cth, NFCT_T_ALL, update_cb, cmd);
-
-		res = nfct_query(cth, NFCT_Q_DUMP, &cmd->family);
-		nfct_close(ith);
-		nfct_close(cth);
+		nfct_mnl_socket_close(modifier_sock);
+		nfct_mnl_socket_close(sock);
 		break;
 
 	case CT_DELETE:
