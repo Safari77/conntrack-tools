@@ -1052,7 +1052,7 @@ scheduler_line : T_PRIO T_NUMBER
 {
 	conf.sched.prio = $2;
 	if (conf.sched.prio < 0 || conf.sched.prio > 99) {
-		dlog(LOG_ERR, "`Priority' must be [0, 99]\n", $2);
+		dlog(LOG_ERR, "`Priority' must be [0, 99]\n");
 		exit(EXIT_FAILURE);
 	}
 };
