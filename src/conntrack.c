@@ -3113,6 +3113,8 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 					nfct_set_nat_details(c, tmpl->ct, &ad,
 							     port_str, family);
 				}
+				free(port_str);
+				free(nat_address);
 			}
 			break;
 		case 'w':
