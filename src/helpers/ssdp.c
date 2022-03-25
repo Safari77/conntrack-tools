@@ -256,7 +256,6 @@ static int find_hdr(const char *name, const uint8_t *data, int data_len,
 		data += i+2;
 	}
 
-	data_len -= name_len;
 	data += name_len;
 	if (pos)
 		*pos = data;
