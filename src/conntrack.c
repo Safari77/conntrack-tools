@@ -1128,8 +1128,7 @@ enum {
 	_O_ID	= (1 << 3),
 	_O_KTMS	= (1 << 4),
 	_O_CL	= (1 << 5),
-	_O_US	= (1 << 6),
-	_O_SAVE	= (1 << 7),
+	_O_SAVE	= (1 << 6),
 };
 
 enum {
@@ -1149,7 +1148,7 @@ static struct parse_parameter {
 	{ {"ALL", "NEW", "UPDATES", "DESTROY"}, 4,
 	  { CT_EVENT_F_ALL, CT_EVENT_F_NEW, CT_EVENT_F_UPD, CT_EVENT_F_DEL } },
 	{ {"xml", "extended", "timestamp", "id", "ktimestamp", "labels", "userspace", "save"}, 8,
-	  { _O_XML, _O_EXT, _O_TMS, _O_ID, _O_KTMS, _O_CL, _O_US, _O_SAVE },
+	  { _O_XML, _O_EXT, _O_TMS, _O_ID, _O_KTMS, _O_CL, 0, _O_SAVE },
 	},
 };
 
@@ -1978,7 +1977,7 @@ static int event_cb(const struct nlmsghdr *nlh, void *data)
 
 	nfct_snprintf_labels(buf, sizeof(buf), ct, type, op_type, op_flags, labelmap);
 done:
-	if ((output_mask & _O_US) && nlh->nlmsg_pid) {
+	if (nlh->nlmsg_pid) {
 		char *prog = get_progname(nlh->nlmsg_pid);
 
 		if (prog)
