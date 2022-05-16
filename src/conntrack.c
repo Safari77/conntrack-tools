@@ -3525,7 +3525,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 		while (1) {
 			char buf[MNL_SOCKET_BUFFER_SIZE];
 
-			res = mnl_socket_recvfrom(sock->mnl, buf, sizeof(buf));
+			res = mnl_socket_recvfrom(event_sock->mnl, buf, sizeof(buf));
 			if (res < 0) {
 				if (errno == ENOBUFS) {
 					fprintf(stderr,
