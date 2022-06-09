@@ -2470,6 +2470,23 @@ static void nfct_mnl_socket_close(const struct nfct_mnl_socket *sock)
 	mnl_socket_close(sock->mnl);
 }
 
+static int nfct_mnl_socket_check_open(struct nfct_mnl_socket *socket,
+				       unsigned int events)
+{
+	if (socket->mnl != NULL)
+		return 0;
+
+	return nfct_mnl_socket_open(socket, events);
+}
+
+static void nfct_mnl_socket_check_close(struct nfct_mnl_socket *sock)
+{
+	if (sock->mnl) {
+		nfct_mnl_socket_close(sock);
+		memset(sock, 0, sizeof(*sock));
+	}
+}
+
 static int __nfct_mnl_dump(struct nfct_mnl_socket *sock,
 			   const struct nlmsghdr *nlh, mnl_cb_t cb, void *data)
 {
@@ -3383,19 +3400,17 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 		break;
 
 	case CT_UPDATE:
-		if (nfct_mnl_socket_open(modifier_sock, 0) < 0)
+		if (nfct_mnl_socket_check_open(modifier_sock, 0) < 0)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
 		nfct_filter_init(cmd);
 		res = nfct_mnl_dump(sock, NFNL_SUBSYS_CTNETLINK,
 				    IPCTNL_MSG_CT_GET, mnl_nfct_update_cb,
 				    cmd, NULL);
-
-		nfct_mnl_socket_close(modifier_sock);
 		break;
 
 	case CT_DELETE:
-		if (nfct_mnl_socket_open(modifier_sock, 0) < 0)
+		if (nfct_mnl_socket_check_open(modifier_sock, 0) < 0)
 			exit_error(OTHER_PROBLEM, "Can't open handler");
 
 		nfct_filter_init(cmd);
@@ -3418,8 +3433,6 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 				    cmd, filter_dump);
 
 		nfct_filter_dump_destroy(filter_dump);
-
-		nfct_mnl_socket_close(modifier_sock);
 		break;
 
 	case EXP_DELETE:
@@ -3856,6 +3869,7 @@ static const char *ct_unsupp_cmd_file(const struct ct_cmd *cmd)
 
 int main(int argc, char *argv[])
 {
+	struct nfct_mnl_socket *modifier_sock = &_modifier_sock;
 	struct nfct_mnl_socket *sock = &_sock;
 	struct ct_cmd *cmd, *next;
 	LIST_HEAD(cmd_list);
@@ -3900,6 +3914,7 @@ int main(int argc, char *argv[])
 		free(cmd);
 	}
 	nfct_mnl_socket_close(sock);
+	nfct_mnl_socket_check_close(modifier_sock);
 
 	return res < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
