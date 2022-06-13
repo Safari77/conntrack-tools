@@ -2038,7 +2038,8 @@ done:
 
 static int nfct_mnl_request(struct nfct_mnl_socket *sock, uint16_t subsys,
 			    int family, uint16_t type, uint16_t flags,
-			    mnl_cb_t cb, const struct nf_conntrack *ct);
+			    mnl_cb_t cb, const struct nf_conntrack *ct,
+			    const struct ct_cmd *cmd);
 
 static int mnl_nfct_delete_cb(const struct nlmsghdr *nlh, void *data)
 {
@@ -2061,7 +2062,7 @@ static int mnl_nfct_delete_cb(const struct nlmsghdr *nlh, void *data)
 
 	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK,
 			       nfct_get_attr_u8(ct, ATTR_ORIG_L3PROTO),
-			       IPCTNL_MSG_CT_DELETE, NLM_F_ACK, NULL, ct);
+			       IPCTNL_MSG_CT_DELETE, NLM_F_ACK, NULL, ct, NULL);
 	if (res < 0)
 		exit_error(OTHER_PROBLEM,
 			   "Operation failed: %s",
@@ -2258,7 +2259,7 @@ static int mnl_nfct_update_cb(const struct nlmsghdr *nlh, void *data)
 		goto destroy_ok;
 
 	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
-			       IPCTNL_MSG_CT_NEW, NLM_F_ACK, NULL, tmp);
+			       IPCTNL_MSG_CT_NEW, NLM_F_ACK, NULL, tmp, NULL);
 	if (res < 0) {
 		fprintf(stderr, "Operation failed: %s\n",
 			err2str(errno, CT_UPDATE));
@@ -2266,7 +2267,7 @@ static int mnl_nfct_update_cb(const struct nlmsghdr *nlh, void *data)
 
 	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
 			       IPCTNL_MSG_CT_GET, NLM_F_ACK,
-			       mnl_nfct_print_cb, tmp);
+			       mnl_nfct_print_cb, tmp, NULL);
 	if (res < 0) {
 		/* the entry has vanish in middle of the update */
 		if (errno == ENOENT)
@@ -2528,7 +2529,8 @@ nfct_mnl_dump(struct nfct_mnl_socket *sock, uint16_t subsys, uint16_t type,
 }
 
 static int nfct_mnl_talk(struct nfct_mnl_socket *sock,
-			 const struct nlmsghdr *nlh, mnl_cb_t cb)
+			 const struct nlmsghdr *nlh, mnl_cb_t cb,
+			 const struct ct_cmd *cmd)
 {
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	int ret;
@@ -2541,12 +2543,13 @@ static int nfct_mnl_talk(struct nfct_mnl_socket *sock,
 	if (ret < 0)
 		return ret;
 
-	return mnl_cb_run(buf, ret, nlh->nlmsg_seq, sock->portid, cb, NULL);
+	return mnl_cb_run(buf, ret, nlh->nlmsg_seq, sock->portid, cb, (void *)cmd);
 }
 
 static int nfct_mnl_request(struct nfct_mnl_socket *sock, uint16_t subsys,
 			    int family, uint16_t type, uint16_t flags,
-			    mnl_cb_t cb, const struct nf_conntrack *ct)
+			    mnl_cb_t cb, const struct nf_conntrack *ct,
+			    const struct ct_cmd *cmd)
 {
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	struct nlmsghdr *nlh;
@@ -2560,7 +2563,7 @@ static int nfct_mnl_request(struct nfct_mnl_socket *sock, uint16_t subsys,
 			return err;
 	}
 
-	return nfct_mnl_talk(sock, nlh, cb);
+	return nfct_mnl_talk(sock, nlh, cb, cmd);
 }
 
 #define UNKNOWN_STATS_NUM 4
@@ -3380,7 +3383,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 		res = nfct_mnl_request(sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
 				       IPCTNL_MSG_CT_NEW,
 				       NLM_F_CREATE | NLM_F_ACK | NLM_F_EXCL,
-				       NULL, cmd->tmpl.ct);
+				       NULL, cmd->tmpl.ct, NULL);
 		if (res >= 0)
 			counter++;
 
@@ -3470,7 +3473,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 
 	case CT_FLUSH:
 		res = nfct_mnl_request(sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
-				       IPCTNL_MSG_CT_DELETE, NLM_F_ACK, NULL, NULL);
+				       IPCTNL_MSG_CT_DELETE, NLM_F_ACK, NULL, NULL, NULL);
 
 		fprintf(stderr, "%s v%s (conntrack-tools): ",PROGNAME,VERSION);
 		fprintf(stderr,"connection tracking table has been emptied.\n");
@@ -3593,7 +3596,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 		 */
 		res = nfct_mnl_request(sock, NFNL_SUBSYS_CTNETLINK, AF_UNSPEC,
 				       IPCTNL_MSG_CT_GET_STATS, 0,
-				       nfct_global_stats_cb, NULL);
+				       nfct_global_stats_cb, NULL, NULL);
 
 		/* don't look at /proc, we got the information via ctnetlink */
 		if (res >= 0)
