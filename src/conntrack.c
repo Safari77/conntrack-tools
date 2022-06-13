@@ -1995,47 +1995,6 @@ out:
 	return MNL_CB_OK;
 }
 
-static int dump_cb(enum nf_conntrack_msg_type type,
-		   struct nf_conntrack *ct,
-		   void *data)
-{
-	unsigned int op_type = NFCT_O_DEFAULT;
-	unsigned int op_flags = 0;
-	struct ct_cmd *cmd = data;
-	char buf[1024];
-
-	if (nfct_filter(cmd, ct, cur_tmpl))
-		return NFCT_CB_CONTINUE;
-
-	if (output_mask & _O_SAVE) {
-		ct_save_snprintf(buf, sizeof(buf), ct, labelmap, NFCT_T_NEW);
-		goto done;
-	}
-
-	if (output_mask & _O_XML) {
-		op_type = NFCT_O_XML;
-		if (dump_xml_header_done) {
-			dump_xml_header_done = 0;
-			printf("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-			       "<conntrack>\n");
-		}
-	}
-	if (output_mask & _O_EXT)
-		op_flags = NFCT_OF_SHOW_LAYER3;
-	if (output_mask & _O_KTMS)
-		op_flags |= NFCT_OF_TIMESTAMP;
-	if (output_mask & _O_ID)
-		op_flags |= NFCT_OF_ID;
-
-	nfct_snprintf_labels(buf, sizeof(buf), ct, NFCT_T_UNKNOWN, op_type, op_flags, labelmap);
-done:
-	printf("%s\n", buf);
-
-	counter++;
-
-	return NFCT_CB_CONTINUE;
-}
-
 static int nfct_mnl_request(struct nfct_mnl_socket *sock, uint16_t subsys,
 			    int family, uint16_t type, uint16_t flags,
 			    mnl_cb_t cb, const struct nf_conntrack *ct,
@@ -3450,13 +3409,9 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 		break;
 
 	case CT_GET:
-		cth = nfct_open(CONNTRACK, 0);
-		if (!cth)
-			exit_error(OTHER_PROBLEM, "Can't open handler");
-
-		nfct_callback_register(cth, NFCT_T_ALL, dump_cb, cmd);
-		res = nfct_query(cth, NFCT_Q_GET, cmd->tmpl.ct);
-		nfct_close(cth);
+		res = nfct_mnl_request(sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
+				       IPCTNL_MSG_CT_GET, NLM_F_ACK,
+				       mnl_nfct_dump_cb, cmd->tmpl.ct, cmd);
 		break;
 
 	case EXP_GET:
