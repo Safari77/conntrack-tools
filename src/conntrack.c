@@ -882,6 +882,21 @@ static int ct_save_snprintf(char *buf, size_t len,
 
 extern struct ctproto_handler ct_proto_unknown;
 
+static int parse_proto_num(const char *str)
+{
+	char *endptr;
+	long val;
+
+	val = strtol(str, &endptr, 0);
+	if (val >= IPPROTO_MAX ||
+	    val < 0 ||
+	    endptr == str ||
+	    *endptr != '\0')
+		return -1;
+
+	return val;
+}
+
 static struct ctproto_handler *findproto(char *name, int *pnum)
 {
 	struct ctproto_handler *cur;
@@ -901,8 +916,8 @@ static struct ctproto_handler *findproto(char *name, int *pnum)
 		return &ct_proto_unknown;
 	}
 	/* using a protocol number? */
-	protonum = atoi(name);
-	if (protonum >= 0 && protonum <= IPPROTO_MAX) {
+	protonum = parse_proto_num(name);
+	if (protonum >= 0) {
 		/* try lookup by number, perhaps this protocol is supported */
 		list_for_each_entry(cur, &proto_list, head) {
 			if (cur->protonum == protonum) {
