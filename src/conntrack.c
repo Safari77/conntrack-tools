@@ -800,6 +800,7 @@ static int ct_save_snprintf(char *buf, size_t len,
 	struct ctproto_handler *cur;
 	uint8_t l3proto, l4proto;
 	int tuple_attrs[4] = {};
+	bool l4proto_set;
 	unsigned i;
 	int ret;
 
@@ -860,6 +861,7 @@ static int ct_save_snprintf(char *buf, size_t len,
 
 	l4proto = nfct_get_attr_u8(ct, ATTR_L4PROTO);
 
+	l4proto_set = false;
 	/* is it in the list of supported protocol? */
 	list_for_each_entry(cur, &proto_list, head) {
 		if (cur->protonum != l4proto)
@@ -870,7 +872,14 @@ static int ct_save_snprintf(char *buf, size_t len,
 
 		ret = ct_snprintf_opts(buf + offset, len, ct, cur->print_opts);
 		BUFFER_SIZE(ret, size, len, offset);
+
+		l4proto_set = true;
 		break;
+	}
+
+	if (!l4proto_set) {
+		ret = snprintf(buf + offset, len, "-p %d ", l4proto);
+		BUFFER_SIZE(ret, size, len, offset);
 	}
 
 	/* skip trailing space, if any */
