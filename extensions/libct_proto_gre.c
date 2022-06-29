@@ -66,22 +66,22 @@ static void help(void)
 
 static char gre_commands_v_options[NUMBER_OF_CMD][GRE_OPT_MAX] =
 {
-		/* 1 2 3 4 5 6 7 8 */
-/*CT_LIST*/	  {2,2,2,2,0,0,0,0},
-/*CT_CREATE*/	  {3,3,3,3,0,0,0,0},
-/*CT_UPDATE*/	  {2,2,2,2,0,0,0,0},
-/*CT_DELETE*/	  {2,2,2,2,0,0,0,0},
-/*CT_GET*/	  {3,3,3,3,0,0,0,0},
-/*CT_FLUSH*/	  {0,0,0,0,0,0,0,0},
-/*CT_EVENT*/	  {2,2,2,2,0,0,0,0},
-/*CT_VERSION*/	  {0,0,0,0,0,0,0,0},
-/*CT_HELP*/	  {0,0,0,0,0,0,0,0},
-/*EXP_LIST*/	  {0,0,0,0,0,0,0,0},
-/*EXP_CREATE*/	  {1,1,1,1,1,1,1,1},
-/*EXP_DELETE*/	  {1,1,1,1,0,0,0,0},
-/*EXP_GET*/	  {1,1,1,1,0,0,0,0},
-/*EXP_FLUSH*/	  {0,0,0,0,0,0,0,0},
-/*EXP_EVENT*/	  {0,0,0,0,0,0,0,0},
+				/* 1 2 3 4 5 6 7 8 */
+	[CT_LIST_BIT]		= {2,2,2,2,0,0,0,0},
+	[CT_CREATE_BIT]		= {3,3,3,3,0,0,0,0},
+	[CT_UPDATE_BIT]		= {2,2,2,2,0,0,0,0},
+	[CT_DELETE_BIT]		= {2,2,2,2,0,0,0,0},
+	[CT_GET_BIT]		= {3,3,3,3,0,0,0,0},
+	[CT_FLUSH_BIT]		= {0,0,0,0,0,0,0,0},
+	[CT_EVENT_BIT]		= {2,2,2,2,0,0,0,0},
+	[CT_VERSION_BIT]	= {0,0,0,0,0,0,0,0},
+	[CT_HELP_BIT]		= {0,0,0,0,0,0,0,0},
+	[EXP_LIST_BIT]		= {0,0,0,0,0,0,0,0},
+	[EXP_CREATE_BIT]	= {1,1,1,1,1,1,1,1},
+	[EXP_DELETE_BIT]	= {1,1,1,1,0,0,0,0},
+	[EXP_GET_BIT]		= {1,1,1,1,0,0,0,0},
+	[EXP_FLUSH_BIT]		= {0,0,0,0,0,0,0,0},
+	[EXP_EVENT_BIT]		= {0,0,0,0,0,0,0,0},
 };
 
 static int parse_options(char c,

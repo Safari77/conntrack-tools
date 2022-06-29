@@ -40,22 +40,22 @@ static const char *icmp_optflags[ICMP_NUMBER_OF_OPT] = {
 static char icmp_commands_v_options[NUMBER_OF_CMD][ICMP_NUMBER_OF_OPT] =
 /* Well, it's better than "Re: Maradona vs Pele" */
 {
-		/* 1 2 3 */
-/*CT_LIST*/	  {2,2,2},
-/*CT_CREATE*/	  {1,1,2},
-/*CT_UPDATE*/	  {2,2,2},
-/*CT_DELETE*/	  {2,2,2},
-/*CT_GET*/	  {1,1,2},
-/*CT_FLUSH*/	  {0,0,0},
-/*CT_EVENT*/	  {2,2,2},
-/*CT_VERSION*/	  {0,0,0},
-/*CT_HELP*/	  {0,0,0},
-/*EXP_LIST*/	  {0,0,0},
-/*EXP_CREATE*/	  {0,0,0},
-/*EXP_DELETE*/	  {0,0,0},
-/*EXP_GET*/	  {0,0,0},
-/*EXP_FLUSH*/	  {0,0,0},
-/*EXP_EVENT*/	  {0,0,0},
+				/* 1 2 3 */
+	[CT_LIST_BIT]		= {2,2,2},
+	[CT_CREATE_BIT]		= {1,1,2},
+	[CT_UPDATE_BIT]		= {2,2,2},
+	[CT_DELETE_BIT]		= {2,2,2},
+	[CT_GET_BIT]		= {1,1,2},
+	[CT_FLUSH_BIT]		= {0,0,0},
+	[CT_EVENT_BIT]		= {2,2,2},
+	[CT_VERSION_BIT]	= {0,0,0},
+	[CT_HELP_BIT]		= {0,0,0},
+	[EXP_LIST_BIT]		= {0,0,0},
+	[EXP_CREATE_BIT]	= {0,0,0},
+	[EXP_DELETE_BIT]	= {0,0,0},
+	[EXP_GET_BIT]		= {0,0,0},
+	[EXP_FLUSH_BIT]		= {0,0,0},
+	[EXP_EVENT_BIT]		= {0,0,0},
 };
 
 static void help(void)

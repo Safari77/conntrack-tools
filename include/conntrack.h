@@ -11,7 +11,70 @@
 #include <linux/netfilter/nf_conntrack_common.h>
 #include <libnetfilter_conntrack/libnetfilter_conntrack.h>
 
-#define NUMBER_OF_CMD   19
+enum ct_command {
+	CT_NONE		= 0,
+
+	CT_LIST_BIT 	= 0,
+	CT_LIST 	= (1 << CT_LIST_BIT),
+
+	CT_CREATE_BIT	= 1,
+	CT_CREATE	= (1 << CT_CREATE_BIT),
+
+	CT_UPDATE_BIT	= 2,
+	CT_UPDATE	= (1 << CT_UPDATE_BIT),
+
+	CT_DELETE_BIT	= 3,
+	CT_DELETE	= (1 << CT_DELETE_BIT),
+
+	CT_GET_BIT	= 4,
+	CT_GET		= (1 << CT_GET_BIT),
+
+	CT_FLUSH_BIT	= 5,
+	CT_FLUSH	= (1 << CT_FLUSH_BIT),
+
+	CT_EVENT_BIT	= 6,
+	CT_EVENT	= (1 << CT_EVENT_BIT),
+
+	CT_VERSION_BIT	= 7,
+	CT_VERSION	= (1 << CT_VERSION_BIT),
+
+	CT_HELP_BIT	= 8,
+	CT_HELP		= (1 << CT_HELP_BIT),
+
+	EXP_LIST_BIT 	= 9,
+	EXP_LIST 	= (1 << EXP_LIST_BIT),
+
+	EXP_CREATE_BIT	= 10,
+	EXP_CREATE	= (1 << EXP_CREATE_BIT),
+
+	EXP_DELETE_BIT	= 11,
+	EXP_DELETE	= (1 << EXP_DELETE_BIT),
+
+	EXP_GET_BIT	= 12,
+	EXP_GET		= (1 << EXP_GET_BIT),
+
+	EXP_FLUSH_BIT	= 13,
+	EXP_FLUSH	= (1 << EXP_FLUSH_BIT),
+
+	EXP_EVENT_BIT	= 14,
+	EXP_EVENT	= (1 << EXP_EVENT_BIT),
+
+	CT_COUNT_BIT	= 15,
+	CT_COUNT	= (1 << CT_COUNT_BIT),
+
+	EXP_COUNT_BIT	= 16,
+	EXP_COUNT	= (1 << EXP_COUNT_BIT),
+
+	CT_STATS_BIT	= 17,
+	CT_STATS	= (1 << CT_STATS_BIT),
+
+	EXP_STATS_BIT	= 18,
+	EXP_STATS	= (1 << EXP_STATS_BIT),
+
+	_CT_BIT_MAX	= 19,
+};
+
+#define NUMBER_OF_CMD   _CT_BIT_MAX
 #define NUMBER_OF_OPT   29
 
 struct nf_conntrack;
