@@ -446,6 +446,7 @@ static const int cmd2type[][2] = {
 	['h']	= { CT_HELP,	CT_HELP },
 	['C']	= { CT_COUNT,	EXP_COUNT },
 	['S']	= { CT_STATS,	EXP_STATS },
+	['U']	= { CT_UPDATE,	0 },
 };
 
 static const int opt2type[] = {
@@ -2995,15 +2996,6 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 		case 'h':
 		case 'C':
 		case 'S':
-			type = check_type(argc, argv);
-			if (type == CT_TABLE_DYING ||
-			    type == CT_TABLE_UNCONFIRMED) {
-				exit_error(PARAMETER_PROBLEM,
-					   "Can't do that command with "
-					   "tables `dying' and `unconfirmed'");
-			}
-			add_command(&command, cmd2type[c][type]);
-			break;
 		case 'U':
 			type = check_type(argc, argv);
 			if (type == CT_TABLE_DYING ||
@@ -3011,11 +3003,16 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 				exit_error(PARAMETER_PROBLEM,
 					   "Can't do that command with "
 					   "tables `dying' and `unconfirmed'");
-			} else if (type == CT_TABLE_CONNTRACK)
-				add_command(&command, CT_UPDATE);
-			else
+			}
+			if (cmd2type[c][type])
+				add_command(&command, cmd2type[c][type]);
+			else {
 				exit_error(PARAMETER_PROBLEM,
-					   "Can't update expectations");
+					   "Can't do --%s on %s",
+					   get_long_opt(c),
+					   type == CT_TABLE_CONNTRACK ?
+					           "conntrack" : "expectations");
+			}
 			break;
 		/* options */
 		case 's':
