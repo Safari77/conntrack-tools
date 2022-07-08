@@ -71,7 +71,10 @@ enum ct_command {
 	EXP_STATS_BIT	= 18,
 	EXP_STATS	= (1 << EXP_STATS_BIT),
 
-	_CT_BIT_MAX	= 19,
+	CT_ADD_BIT	= 19,
+	CT_ADD		= (1 << CT_ADD_BIT),
+
+	_CT_BIT_MAX	= 20,
 };
 
 #define NUMBER_OF_CMD   _CT_BIT_MAX

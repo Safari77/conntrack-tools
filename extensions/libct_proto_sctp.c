@@ -86,6 +86,7 @@ static char sctp_commands_v_options[NUMBER_OF_CMD][SCTP_OPT_MAX] =
 	[EXP_GET_BIT]		= {1,1,1,1,0,0,0,0,0,0,0},
 	[EXP_FLUSH_BIT]		= {0,0,0,0,0,0,0,0,0,0,0},
 	[EXP_EVENT_BIT]		= {0,0,0,0,0,0,0,0,0,0,0},
+	[CT_ADD_BIT]		= {3,3,3,3,0,0,1,0,0,1,1},
 };
 
 static const char *sctp_states[SCTP_CONNTRACK_MAX] = {

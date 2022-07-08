@@ -59,6 +59,7 @@ static char icmpv6_commands_v_options[NUMBER_OF_CMD][ICMPV6_NUMBER_OF_OPT] =
 	[EXP_GET_BIT]		= {0,0,0},
 	[EXP_FLUSH_BIT]		= {0,0,0},
 	[EXP_EVENT_BIT]		= {0,0,0},
+	[CT_ADD_BIT]		= {1,1,2},
 };
 
 static void help(void)

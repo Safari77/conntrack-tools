@@ -291,6 +291,7 @@ static const char *optflags[NUMBER_OF_OPT] = {
 static struct option original_opts[] = {
 	{"dump", 2, 0, 'L'},
 	{"create", 2, 0, 'I'},
+	{"add", 2, 0, 'A'},
 	{"delete", 2, 0, 'D'},
 	{"update", 2, 0, 'U'},
 	{"get", 2, 0, 'G'},
@@ -334,7 +335,7 @@ static struct option original_opts[] = {
 	{0, 0, 0, 0}
 };
 
-static const char *getopt_str = ":L::I::U::D::G::E::F::hVs:d:r:q:"
+static const char *getopt_str = ":L::I::U::D::G::E::F::A::hVs:d:r:q:"
 				"p:t:u:e:a:z[:]:{:}:m:i:f:o:n::"
 				"g::c:b:C::Sj::w:l:<:>::(:):";
 
@@ -371,6 +372,7 @@ static char commands_v_options[NUMBER_OF_CMD][NUMBER_OF_OPT] =
 	[EXP_COUNT_BIT]	= {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 	[CT_STATS_BIT]	= {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 	[EXP_STATS_BIT]	= {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+	[CT_ADD_BIT]	= {3,3,3,3,1,1,2,0,0,0,0,0,0,2,2,0,0,2,2,0,0,0,0,2,0,2,0,2,2},
 };
 
 static const int cmd2type[][2] = {
@@ -385,6 +387,7 @@ static const int cmd2type[][2] = {
 	['C']	= { CT_COUNT,	EXP_COUNT },
 	['S']	= { CT_STATS,	EXP_STATS },
 	['U']	= { CT_UPDATE,	0 },
+	['A']	= { CT_ADD,	0 },
 };
 
 static const int opt2type[] = {
@@ -488,6 +491,7 @@ static char exit_msg[NUMBER_OF_CMD][64] = {
 	[CT_EVENT_BIT]		= "%d flow events have been shown.\n",
 	[EXP_LIST_BIT]		= "%d expectations have been shown.\n",
 	[EXP_DELETE_BIT]	= "%d expectations have been shown.\n",
+	[CT_ADD_BIT]		= "%d flow entries have been added.\n",
 };
 
 static const char usage_commands[] =
@@ -745,7 +749,7 @@ static int ct_save_snprintf(char *buf, size_t len,
 
 	switch (type) {
 	case NFCT_T_NEW:
-		ret = snprintf(buf + offset, len, "-I ");
+		ret = snprintf(buf + offset, len, "-A ");
 		BUFFER_SIZE(ret, size, len, offset);
 		break;
 	case NFCT_T_UPDATE:
@@ -1054,11 +1058,11 @@ err2str(int err, enum ct_command command)
 	  { { CT_LIST, ENOTSUPP, "function not implemented" },
 	    { 0xFFFF, EINVAL, "invalid parameters" },
 	    { CT_CREATE, EEXIST, "Such conntrack exists, try -U to update" },
-	    { CT_CREATE|CT_GET|CT_DELETE, ENOENT, 
+	    { CT_CREATE|CT_GET|CT_DELETE|CT_ADD, ENOENT,
 		    "such conntrack doesn't exist" },
-	    { CT_CREATE|CT_GET, ENOMEM, "not enough memory" },
+	    { CT_CREATE|CT_GET|CT_ADD, ENOMEM, "not enough memory" },
 	    { CT_GET, EAFNOSUPPORT, "protocol not supported" },
-	    { CT_CREATE, ETIME, "conntrack has expired" },
+	    { CT_CREATE|CT_ADD, ETIME, "conntrack has expired" },
 	    { EXP_CREATE, ENOENT, "master conntrack not found" },
 	    { EXP_CREATE, EINVAL, "invalid parameters" },
 	    { ~0U, EPERM, "sorry, you must be root or get "
@@ -2881,7 +2885,8 @@ static int print_stats(const struct ct_cmd *cmd)
 	if (cmd->command && exit_msg[cmd->cmd][0]) {
 		fprintf(stderr, "%s v%s (conntrack-tools): ",PROGNAME,VERSION);
 		fprintf(stderr, exit_msg[cmd->cmd], counter);
-		if (counter == 0 && !(cmd->command & (CT_LIST | EXP_LIST)))
+		if (counter == 0 &&
+		    !(cmd->command & (CT_LIST | EXP_LIST | CT_ADD)))
 			return -1;
 	}
 
@@ -2935,6 +2940,7 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 		case 'C':
 		case 'S':
 		case 'U':
+		case 'A':
 			type = check_type(argc, argv);
 			if (type == CT_TABLE_DYING ||
 			    type == CT_TABLE_UNCONFIRMED) {
@@ -3286,6 +3292,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 		break;
 
 	case CT_CREATE:
+	case CT_ADD:
 		if ((cmd->options & CT_OPT_ORIG) && !(cmd->options & CT_OPT_REPL))
 			nfct_setobjopt(cmd->tmpl.ct, NFCT_SOPT_SETUP_REPLY);
 		else if (!(cmd->options & CT_OPT_ORIG) && (cmd->options & CT_OPT_REPL))
@@ -3304,7 +3311,8 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 				       NULL, cmd->tmpl.ct, NULL);
 		if (res >= 0)
 			counter++;
-
+		else if (errno == EEXIST && cmd->command == CT_ADD)
+			res = 0;
 		break;
 
 	case EXP_CREATE:
@@ -3810,7 +3818,8 @@ int main(int argc, char *argv[])
 		ct_parse_file(&cmd_list, argv[0], argv[2]);
 
 		list_for_each_entry(cmd, &cmd_list, list) {
-			if (!(cmd->command & (CT_CREATE | CT_UPDATE | CT_DELETE | CT_FLUSH)))
+			if (!(cmd->command &
+			      (CT_CREATE | CT_ADD | CT_UPDATE | CT_DELETE | CT_FLUSH)))
 				exit_error(PARAMETER_PROBLEM,
 					   "Cannot use command `%s' with --load-file",
 					   ct_unsupp_cmd_file(cmd));
