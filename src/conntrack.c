@@ -840,7 +840,7 @@ static int parse_proto_num(const char *str)
 	long val;
 
 	val = strtol(str, &endptr, 0);
-	if (val >= IPPROTO_MAX ||
+	if (val > IPPROTO_RAW ||
 	    val < 0 ||
 	    endptr == str ||
 	    *endptr != '\0')
