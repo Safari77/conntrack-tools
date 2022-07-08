@@ -836,12 +836,11 @@ extern struct ctproto_handler ct_proto_unknown;
 
 static int parse_proto_num(const char *str)
 {
+	unsigned long val;
 	char *endptr;
-	long val;
 
-	val = strtol(str, &endptr, 0);
+	val = strtoul(str, &endptr, 0);
 	if (val > IPPROTO_RAW ||
-	    val < 0 ||
 	    endptr == str ||
 	    *endptr != '\0')
 		return -1;
