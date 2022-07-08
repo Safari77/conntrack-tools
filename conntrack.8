@@ -14,6 +14,8 @@ conntrack \- command line interface for netfilter connection tracking
 .br
 .BR "conntrack -I [table] parameters"
 .br
+.BR "conntrack -A [table] parameters"
+.br
 .BR "conntrack -U [table] parameters"
 .br
 .BR "conntrack -E [table] [options]"
@@ -88,7 +90,10 @@ Search for and show a particular (matching) entry in the given table.
 Delete an entry from the given table.
 .TP
 .BI "-I, --create "
-Create a new entry from the given table.
+Create a new entry from the given table, it fails if it already exists.
+.TP
+.BI "-A, --add "
+Add a new entry from the given table.
 .TP
 .BI "-U, --update "
 Update an entry from the given table.
@@ -186,8 +191,8 @@ Use multiple \-l options to specify multiple labels that need to be set.
 .TP
 .BI "--label-add " "LABEL"
 Specify the conntrack label to add to the selected conntracks.
-This option is only available in conjunction with "\-I, \-\-create" or
-"\-U, \-\-update".
+This option is only available in conjunction with "\-I, \-\-create",
+"\-A, \-\-add" or "\-U, \-\-update".
 .TP
 .BI "--label-del " "[LABEL]"
 Specify the conntrack label to delete from the selected conntracks.
