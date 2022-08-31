@@ -699,12 +699,12 @@ unix_options:
 
 unix_option : T_PATH T_PATH_VAL
 {
-	if (strlen($2) > UNIX_PATH_MAX) {
+	if (strlen($2) >= UNIX_PATH_MAX) {
 		dlog(LOG_ERR, "Path is longer than %u characters",
-		     UNIX_PATH_MAX);
+		     UNIX_PATH_MAX - 1);
 		exit(EXIT_FAILURE);
 	}
-	snprintf(conf.local.path, sizeof(conf.local.path), "%s", $2);
+	strcpy(conf.local.path, $2);
 	free($2);
 };
 
