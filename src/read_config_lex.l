@@ -21,6 +21,7 @@
 
 #include <string.h>
 
+#include "log.h"
 #include "conntrackd.h"
 #include "read_config_yy.h"
 %}
@@ -174,7 +175,7 @@ notrack		[N|n][O|o][T|t][R|r][A|a][C|c][K|k]
 %%
 
 int
-yywrap()
+yywrap(void)
 {
 	return 1;
 }

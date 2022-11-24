@@ -31,13 +31,24 @@
 #include "cidr.h"
 #include "helper.h"
 #include "stack.h"
+#include "log.h"
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <sched.h>
 #include <dlfcn.h>
+
 #include <libnetfilter_conntrack/libnetfilter_conntrack.h>
 #include <libnetfilter_conntrack/libnetfilter_conntrack_tcp.h>
 
 extern char *yytext;
 extern int   yylineno;
+
+int yylex (void);
+int yyerror (char *msg);
+void yyrestart (FILE *input_file);
 
 struct ct_conf conf;
 
