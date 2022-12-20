@@ -761,7 +761,6 @@ static int ct_save_snprintf(char *buf, size_t len,
 		BUFFER_SIZE(ret, size, len, offset);
 		break;
 	default:
-		ret = 0;
 		break;
 	}
 
