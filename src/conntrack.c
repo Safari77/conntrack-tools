@@ -3479,7 +3479,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 					   strerror(errno));
 				break;
 			}
-			res = mnl_cb_run(buf, res, 0, 0, event_cb, cmd);
+			mnl_cb_run(buf, res, 0, 0, event_cb, cmd);
 		}
 		mnl_socket_close(event_sock->mnl);
 		break;
