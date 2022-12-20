@@ -139,6 +139,8 @@ static int alloc_tmpl_objects(struct ct_tmpl *tmpl)
 
 static void free_tmpl_objects(struct ct_tmpl *tmpl)
 {
+	if (!tmpl)
+		return;
 	if (tmpl->ct)
 		nfct_destroy(tmpl->ct);
 	if (tmpl->exptuple)
