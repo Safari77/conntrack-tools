@@ -2886,7 +2886,7 @@ static int print_stats(const struct ct_cmd *cmd)
 		fprintf(stderr, "%s v%s (conntrack-tools): ",PROGNAME,VERSION);
 		fprintf(stderr, exit_msg[cmd->cmd], counter);
 		if (counter == 0 &&
-		    !(cmd->command & (CT_LIST | EXP_LIST | CT_ADD)))
+		    !(cmd->command & (CT_LIST | EXP_LIST)))
 			return -1;
 	}
 
@@ -3219,6 +3219,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 	struct nfct_mnl_socket *modifier_sock = &_modifier_sock;
 	struct nfct_mnl_socket *event_sock = &_event_sock;
 	struct nfct_filter_dump *filter_dump;
+	uint16_t nl_flags = 0;
 	int res = 0;
 
 	switch(cmd->command) {
@@ -3305,14 +3306,15 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 			nfct_set_attr(cmd->tmpl.ct, ATTR_CONNLABELS,
 					xnfct_bitmask_clone(cmd->tmpl.label_modify));
 
+		if (cmd->command == CT_CREATE)
+			nl_flags = NLM_F_EXCL;
+
 		res = nfct_mnl_request(sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
 				       IPCTNL_MSG_CT_NEW,
-				       NLM_F_CREATE | NLM_F_ACK | NLM_F_EXCL,
+				       NLM_F_CREATE | NLM_F_ACK | nl_flags,
 				       NULL, cmd->tmpl.ct, NULL);
 		if (res >= 0)
 			counter++;
-		else if (errno == EEXIST && cmd->command == CT_ADD)
-			res = 0;
 		break;
 
 	case EXP_CREATE:
@@ -3835,8 +3837,8 @@ int main(int argc, char *argv[])
 			exit_error(OTHER_PROBLEM, "OOM");
 
 		do_parse(cmd, argc, argv);
-		do_command_ct(argv[0], cmd, sock);
-		res = print_stats(cmd);
+		res = do_command_ct(argv[0], cmd, sock);
+		res |= print_stats(cmd);
 		free(cmd);
 	}
 	nfct_mnl_socket_close(sock);
