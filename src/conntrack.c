@@ -3007,8 +3007,7 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 			if (tmpl->filter_status_kernel.mask == 0)
 				tmpl->filter_status_kernel.mask = status;
 
-			tmpl->mark.value = status;
-			tmpl->filter_status_kernel.val = tmpl->mark.value;
+			tmpl->filter_status_kernel.val = status;
 			tmpl->filter_status_kernel_set = true;
 			break;
 		case 'e':
