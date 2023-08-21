@@ -2202,7 +2202,7 @@ static int mnl_nfct_update_cb(const struct nlmsghdr *nlh, void *data)
 
 	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK,
 			       nfct_get_attr_u8(ct, ATTR_ORIG_L3PROTO),
-			       IPCTNL_MSG_CT_GET, NLM_F_ACK,
+			       IPCTNL_MSG_CT_GET, 0,
 			       mnl_nfct_print_cb, tmp, NULL);
 	if (res < 0) {
 		/* the entry has vanish in middle of the update */
@@ -3388,7 +3388,7 @@ static int do_command_ct(const char *progname, struct ct_cmd *cmd,
 
 	case CT_GET:
 		res = nfct_mnl_request(sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
-				       IPCTNL_MSG_CT_GET, NLM_F_ACK,
+				       IPCTNL_MSG_CT_GET, 0,
 				       mnl_nfct_dump_cb, cmd->tmpl.ct, cmd);
 		break;
 
