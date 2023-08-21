@@ -1989,10 +1989,14 @@ static int mnl_nfct_delete_cb(const struct nlmsghdr *nlh, void *data)
 	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK,
 			       nfct_get_attr_u8(ct, ATTR_ORIG_L3PROTO),
 			       IPCTNL_MSG_CT_DELETE, NLM_F_ACK, NULL, ct, NULL);
-	if (res < 0)
+	if (res < 0) {
+		/* the entry has vanish in middle of the delete */
+		if (errno == ENOENT)
+			goto done;
 		exit_error(OTHER_PROBLEM,
 			   "Operation failed: %s",
 			   err2str(errno, CT_DELETE));
+	}
 
 	if (output_mask & _O_SAVE) {
 		ct_save_snprintf(buf, sizeof(buf), ct, labelmap, NFCT_T_DESTROY);
@@ -2188,8 +2192,12 @@ static int mnl_nfct_update_cb(const struct nlmsghdr *nlh, void *data)
 			       nfct_get_attr_u8(ct, ATTR_ORIG_L3PROTO),
 			       IPCTNL_MSG_CT_NEW, NLM_F_ACK, NULL, tmp, NULL);
 	if (res < 0) {
-		fprintf(stderr, "Operation failed: %s\n",
-			err2str(errno, CT_UPDATE));
+		/* the entry has vanish in middle of the update */
+		if (errno == ENOENT)
+			goto destroy_ok;
+		exit_error(OTHER_PROBLEM,
+			   "Operation failed: %s",
+			   err2str(errno, CT_UPDATE));
 	}
 
 	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK,
