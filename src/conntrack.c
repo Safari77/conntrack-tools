@@ -2184,14 +2184,16 @@ static int mnl_nfct_update_cb(const struct nlmsghdr *nlh, void *data)
 	if (nfct_cmp(tmp, ct, NFCT_CMP_ALL | NFCT_CMP_MASK))
 		goto destroy_ok;
 
-	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
+	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK,
+			       nfct_get_attr_u8(ct, ATTR_ORIG_L3PROTO),
 			       IPCTNL_MSG_CT_NEW, NLM_F_ACK, NULL, tmp, NULL);
 	if (res < 0) {
 		fprintf(stderr, "Operation failed: %s\n",
 			err2str(errno, CT_UPDATE));
 	}
 
-	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK, cmd->family,
+	res = nfct_mnl_request(modifier_sock, NFNL_SUBSYS_CTNETLINK,
+			       nfct_get_attr_u8(ct, ATTR_ORIG_L3PROTO),
 			       IPCTNL_MSG_CT_GET, NLM_F_ACK,
 			       mnl_nfct_print_cb, tmp, NULL);
 	if (res < 0) {
