@@ -538,7 +538,7 @@ static const char usage_parameters[] =
 	"Common parameters and options:\n"
 	"  -s, --src, --orig-src ip\t\tSource address from original direction\n"
 	"  -d, --dst, --orig-dst ip\t\tDestination address from original direction\n"
-	"  -r, --reply-src ip\t\tSource addres from reply direction\n"
+	"  -r, --reply-src ip\t\tSource address from reply direction\n"
 	"  -q, --reply-dst ip\t\tDestination address from reply direction\n"
 	"  -p, --protonum proto\t\tLayer 4 Protocol, eg. 'tcp'\n"
 	"  -f, --family proto\t\tLayer 3 Protocol, eg. 'ipv6'\n"
