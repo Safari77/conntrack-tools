@@ -246,9 +246,11 @@ multicast_options :
 
 multicast_option : T_IPV4_ADDR T_IP
 {
+	struct channel_conf *channel_conf = &conf.channel[conf.channel_num];
+
 	__max_dedicated_links_reached();
 
-	if (!inet_aton($2, &conf.channel[conf.channel_num].u.mcast.in)) {
+	if (!inet_aton($2, &channel_conf->u.mcast.in.inet_addr)) {
 		dlog(LOG_WARNING, "%s is not a valid IPv4 address", $2);
 		free($2);
 		break;
@@ -310,9 +312,11 @@ multicast_option : T_IPV6_ADDR T_IP
 
 multicast_option : T_IPV4_IFACE T_IP
 {
+	struct channel_conf *channel_conf = &conf.channel[conf.channel_num];
+
 	__max_dedicated_links_reached();
 
-	if (!inet_aton($2, &conf.channel[conf.channel_num].u.mcast.ifa)) {
+	if (!inet_aton($2, &channel_conf->u.mcast.ifa.interface_addr)) {
 		dlog(LOG_WARNING, "%s is not a valid IPv4 address", $2);
 		free($2);
 		break;
@@ -423,9 +427,11 @@ udp_options :
 
 udp_option : T_IPV4_ADDR T_IP
 {
+	struct channel_conf *channel_conf = &conf.channel[conf.channel_num];
+
 	__max_dedicated_links_reached();
 
-	if (!inet_aton($2, &conf.channel[conf.channel_num].u.udp.server.ipv4)) {
+	if (!inet_aton($2, &channel_conf->u.udp.server.ipv4.inet_addr)) {
 		dlog(LOG_WARNING, "%s is not a valid IPv4 address", $2);
 		free($2);
 		break;
@@ -456,9 +462,11 @@ udp_option : T_IPV6_ADDR T_IP
 
 udp_option : T_IPV4_DEST_ADDR T_IP
 {
+	struct channel_conf *channel_conf = &conf.channel[conf.channel_num];
+
 	__max_dedicated_links_reached();
 
-	if (!inet_aton($2, &conf.channel[conf.channel_num].u.udp.client)) {
+	if (!inet_aton($2, &channel_conf->u.udp.client.inet_addr)) {
 		dlog(LOG_WARNING, "%s is not a valid IPv4 address", $2);
 		free($2);
 		break;
@@ -574,9 +582,11 @@ tcp_options :
 
 tcp_option : T_IPV4_ADDR T_IP
 {
+	struct channel_conf *channel_conf = &conf.channel[conf.channel_num];
+
 	__max_dedicated_links_reached();
 
-	if (!inet_aton($2, &conf.channel[conf.channel_num].u.tcp.server.ipv4)) {
+	if (!inet_aton($2, &channel_conf->u.tcp.server.ipv4.inet_addr)) {
 		dlog(LOG_WARNING, "%s is not a valid IPv4 address", $2);
 		free($2);
 		break;
@@ -607,9 +617,11 @@ tcp_option : T_IPV6_ADDR T_IP
 
 tcp_option : T_IPV4_DEST_ADDR T_IP
 {
+	struct channel_conf *channel_conf = &conf.channel[conf.channel_num];
+
 	__max_dedicated_links_reached();
 
-	if (!inet_aton($2, &conf.channel[conf.channel_num].u.tcp.client)) {
+	if (!inet_aton($2, &channel_conf->u.tcp.client.inet_addr)) {
 		dlog(LOG_WARNING, "%s is not a valid IPv4 address", $2);
 		free($2);
 		break;
@@ -1239,7 +1251,7 @@ filter_address_item : T_IPV4_ADDR T_IP
 		}
 	}
 
-	if (!inet_aton($2, &ip.ipv4)) {
+	if (!inet_aton($2, (struct in_addr *) &ip.ipv4)) {
 		dlog(LOG_WARNING, "%s is not a valid IPv4, ignoring", $2);
 		free($2);
 		break;
