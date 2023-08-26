@@ -47,7 +47,7 @@ extern char *yytext;
 extern int   yylineno;
 
 int yylex (void);
-int yyerror (char *msg);
+int yyerror (const char *msg);
 void yyrestart (FILE *input_file);
 
 struct ct_conf conf;
@@ -1681,7 +1681,7 @@ helper_policy_expect_timeout: T_HELPER_EXPECT_TIMEOUT T_NUMBER
 %%
 
 int __attribute__((noreturn))
-yyerror(char *msg)
+yyerror(const char *msg)
 {
 	dlog(LOG_ERR, "parsing config file in line (%d), symbol '%s': %s",
 	     yylineno, yytext, msg);
