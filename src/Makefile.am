@@ -11,7 +11,18 @@ BUILT_SOURCES = read_config_yy.h
 sbin_PROGRAMS = conntrack conntrackd nfct
 
 conntrack_SOURCES = conntrack.c
-conntrack_LDADD = ../extensions/libct_proto_tcp.la ../extensions/libct_proto_udp.la ../extensions/libct_proto_udplite.la ../extensions/libct_proto_icmp.la ../extensions/libct_proto_icmpv6.la ../extensions/libct_proto_sctp.la ../extensions/libct_proto_dccp.la ../extensions/libct_proto_gre.la ../extensions/libct_proto_unknown.la ${LIBNETFILTER_CONNTRACK_LIBS} ${LIBMNL_LIBS} ${LIBNFNETLINK_LIBS}
+conntrack_LDADD   = ../extensions/libct_proto_dccp.la    \
+                    ../extensions/libct_proto_gre.la     \
+                    ../extensions/libct_proto_icmp.la    \
+                    ../extensions/libct_proto_icmpv6.la  \
+                    ../extensions/libct_proto_sctp.la    \
+                    ../extensions/libct_proto_tcp.la     \
+                    ../extensions/libct_proto_udp.la     \
+                    ../extensions/libct_proto_udplite.la \
+                    ../extensions/libct_proto_unknown.la \
+                    ${LIBMNL_LIBS}                       \
+                    ${LIBNETFILTER_CONNTRACK_LIBS}       \
+                    ${LIBNFNETLINK_LIBS}
 
 nfct_SOURCES = nfct.c
 
@@ -35,22 +46,54 @@ if HAVE_CTHELPER
 nfct_LDADD += ${LIBNETFILTER_CTHELPER_LIBS}
 endif
 
-conntrackd_SOURCES = alarm.c main.c run.c hash.c queue.c queue_tx.c rbtree.c \
-		    local.c log.c mcast.c udp.c netlink.c vector.c \
-		    filter.c fds.c event.c process.c origin.c date.c \
-		    cache.c cache-ct.c cache-exp.c \
-		    cache_timer.c \
-		    ctnl.c \
-		    sync-mode.c sync-alarm.c sync-ftfw.c sync-notrack.c \
-		    traffic_stats.c stats-mode.c \
-		    network.c cidr.c \
-		    build.c parse.c \
-		    channel.c multichannel.c channel_mcast.c channel_udp.c \
-		    tcp.c channel_tcp.c \
-		    external_cache.c external_inject.c \
-		    internal_cache.c internal_bypass.c \
-		    read_config_yy.y read_config_lex.l \
-		    stack.c resync.c
+conntrackd_SOURCES = alarm.c            \
+                     build.c            \
+                     cache.c            \
+                     cache-ct.c         \
+                     cache-exp.c        \
+                     cache_timer.c      \
+                     channel.c          \
+                     channel_mcast.c    \
+                     channel_tcp.c      \
+                     channel_udp.c      \
+                     cidr.c             \
+                     ctnl.c             \
+                     date.c             \
+                     event.c            \
+                     external_cache.c   \
+                     external_inject.c  \
+                     fds.c              \
+                     filter.c           \
+                     hash.c             \
+                     internal_bypass.c  \
+                     internal_cache.c   \
+                     local.c            \
+                     log.c              \
+                     main.c             \
+                     mcast.c            \
+                     multichannel.c     \
+                     netlink.c          \
+                     network.c          \
+                     origin.c           \
+                     parse.c            \
+                     process.c          \
+                     queue.c            \
+                     queue_tx.c         \
+                     rbtree.c           \
+                     read_config_lex.l  \
+                     read_config_yy.y   \
+                     resync.c           \
+                     run.c              \
+                     stack.c            \
+                     stats-mode.c       \
+                     sync-alarm.c       \
+                     sync-ftfw.c        \
+                     sync-mode.c        \
+                     sync-notrack.c     \
+                     tcp.c              \
+                     traffic_stats.c    \
+                     udp.c              \
+                     vector.c
 
 if HAVE_CTHELPER
 conntrackd_SOURCES += cthelper.c helpers.c utils.c expect.c
