@@ -1944,7 +1944,7 @@ static int event_cb(const struct nlmsghdr *nlh, void *data)
 
 	nfct_snprintf_labels(buf, sizeof(buf), ct, type, op_type, op_flags, labelmap);
 done:
-	if (nlh->nlmsg_pid) {
+	if (nlh->nlmsg_pid && !(output_mask & _O_XML)) {
 		char *prog = get_progname(nlh->nlmsg_pid);
 
 		if (prog)
