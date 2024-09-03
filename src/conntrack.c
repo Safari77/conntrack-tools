@@ -337,7 +337,7 @@ static struct option original_opts[] = {
 	{0, 0, 0, 0}
 };
 
-static const char *getopt_str = ":L::I::U::D::G::E::F::A::hVs:d:r:q:"
+static const char *getopt_str = ":LIUDGEFAhVs:d:r:q:"
 				"p:t:u:e:a:z[:]:{:}:m:i:f:o:n::"
 				"g::c:b:C::Sj::w:l:<:>::(:):";
 
