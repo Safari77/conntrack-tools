@@ -1213,6 +1213,26 @@ parse_parameter_mask(const char *arg, unsigned int *status, unsigned int *mask, 
 		exit_error(PARAMETER_PROBLEM, "Bad parameter `%s'", arg);
 }
 
+static int parse_value(const char *str, uint32_t *ret, uint64_t max)
+{
+	char *endptr;
+	uint64_t val;
+
+	assert(max <= UINT32_MAX);
+
+	errno = 0;
+	val = strtoul(str, &endptr, 0);
+	if (endptr == str ||
+	    *endptr != '\0' ||
+	    (val == ULONG_MAX && errno == ERANGE) ||
+	    val > max)
+		return -1;
+
+	*ret = val;
+
+	return 0;
+}
+
 static void
 parse_u32_mask(const char *arg, struct u32_mask *m)
 {
@@ -2918,6 +2938,7 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 	struct ct_tmpl *tmpl;
 	int res = 0, partial;
 	union ct_address ad;
+	uint32_t value;
 	int c, cmd;
 
 	/* we release these objects in the exit_error() path. */
@@ -3078,17 +3099,19 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 		case 'w':
 		case '(':
 		case ')':
+			if (parse_value(optarg, &value, UINT16_MAX) < 0)
+				exit_error(OTHER_PROBLEM, "unexpected value '%s' with -%c option", optarg, c);
+
 			options |= opt2type[c];
-			nfct_set_attr_u16(tmpl->ct,
-					  opt2attr[c],
-					  strtoul(optarg, NULL, 0));
+			nfct_set_attr_u16(tmpl->ct, opt2attr[c], value);
 			break;
 		case 'i':
 		case 'c':
+			if (parse_value(optarg, &value, UINT32_MAX) < 0)
+				exit_error(OTHER_PROBLEM, "unexpected value '%s' with -%c option", optarg, c);
+
 			options |= opt2type[c];
-			nfct_set_attr_u32(tmpl->ct,
-					  opt2attr[c],
-					  strtoul(optarg, NULL, 0));
+			nfct_set_attr_u32(tmpl->ct, opt2attr[c], value);
 			break;
 		case 'm':
 			options |= opt2type[c];
