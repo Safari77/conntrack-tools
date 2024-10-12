@@ -1233,17 +1233,35 @@ static int parse_value(const char *str, uint32_t *ret, uint64_t max)
 	return 0;
 }
 
-static void
+static int
 parse_u32_mask(const char *arg, struct u32_mask *m)
 {
-	char *end;
+	uint64_t val, mask;
+	char *endptr;
 
-	m->value = (uint32_t) strtoul(arg, &end, 0);
+	val = strtoul(arg, &endptr, 0);
+	if (endptr == arg ||
+	    (*endptr != '\0' && *endptr != '/') ||
+	    (val == ULONG_MAX && errno == ERANGE) ||
+	    val > UINT32_MAX)
+		return -1;
 
-	if (*end == '/')
-		m->mask = (uint32_t) strtoul(end+1, NULL, 0);
-	else
+	m->value = val;
+
+	if (*endptr == '/') {
+		mask = strtoul(endptr + 1, &endptr, 0);
+		if (endptr == arg ||
+		    *endptr != '\0' ||
+		    (val == ULONG_MAX && errno == ERANGE) ||
+		    val > UINT32_MAX)
+			return -1;
+
+		m->mask = mask;
+	} else {
 		m->mask = ~0;
+	}
+
+	return 0;
 }
 
 static int
@@ -3115,7 +3133,9 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 			break;
 		case 'm':
 			options |= opt2type[c];
-			parse_u32_mask(optarg, &tmpl->mark);
+			if (parse_u32_mask(optarg, &tmpl->mark) < 0)
+				exit_error(OTHER_PROBLEM, "unexpected value '%s' with -%c option", optarg, c);
+
 			tmpl->filter_mark_kernel.val = tmpl->mark.value;
 			tmpl->filter_mark_kernel.mask = tmpl->mark.mask;
 			tmpl->filter_mark_kernel_set = true;
