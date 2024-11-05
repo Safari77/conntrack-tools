@@ -2030,7 +2030,7 @@ static int mnl_nfct_delete_cb(const struct nlmsghdr *nlh, void *data)
 	if (res < 0) {
 		/* the entry has vanish in middle of the delete */
 		if (errno == ENOENT)
-			goto done;
+			goto destroy_ok;
 		exit_error(OTHER_PROBLEM,
 			   "Operation failed: %s",
 			   err2str(errno, CT_DELETE));
