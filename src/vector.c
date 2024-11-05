@@ -35,7 +35,7 @@ struct vector *vector_create(size_t size)
 {
 	struct vector *v;
 
-	v = calloc(sizeof(struct vector), 1);
+	v = calloc(1, sizeof(struct vector));
 	if (v == NULL)
 		return NULL;
 
