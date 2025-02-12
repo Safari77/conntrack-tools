@@ -1914,6 +1914,25 @@ static char *get_progname(uint32_t portid)
 	return NULL;
 }
 
+static void event_print_timestamp(const struct nf_conntrack *ct)
+{
+	struct timeval tv;
+
+	/* nfct_attr_is_set returns -1 if attr is unknown */
+	if (nfct_attr_is_set(ct, ATTR_TIMESTAMP_EVENT) > 0) {
+		uint64_t event_ts = nfct_get_attr_u64(ct, ATTR_TIMESTAMP_EVENT);
+		static const uint64_t ns_per_s = 1000000000ul;
+		static const uint64_t ns_to_usec = 1000ul;
+
+		tv.tv_sec = event_ts / ns_per_s;
+		tv.tv_usec = (event_ts % ns_per_s) / ns_to_usec;
+	} else {
+		gettimeofday(&tv, NULL);
+	}
+
+	printf("[%-.8ld.%-.6ld]\t", tv.tv_sec, tv.tv_usec);
+}
+
 static int event_cb(const struct nlmsghdr *nlh, void *data)
 {
 	struct nfgenmsg *nfh = mnl_nlmsg_get_payload(nlh);
@@ -1969,9 +1988,7 @@ static int event_cb(const struct nlmsghdr *nlh, void *data)
 		op_flags = NFCT_OF_SHOW_LAYER3;
 	if (output_mask & _O_TMS) {
 		if (!(output_mask & _O_XML)) {
-			struct timeval tv;
-			gettimeofday(&tv, NULL);
-			printf("[%-.8ld.%-.6ld]\t", tv.tv_sec, tv.tv_usec);
+			event_print_timestamp(ct);
 		} else
 			op_flags |= NFCT_OF_TIME;
 	}
